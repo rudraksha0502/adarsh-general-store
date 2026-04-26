@@ -10,7 +10,7 @@ const SUPABASE_URL  = 'https://fghjsmevbdypjgzbigti.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnaGpzbWV2YmR5cGpnemJpZ3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMDU2NDYsImV4cCI6MjA5Mjc4MTY0Nn0.Pbp_sfEJLqyKRAv3LPMCVMDBz4s6qd3BrsVfJQB8xJk';
 
 // ✅ HARDCODED ADMIN CREDENTIALS (no Supabase Auth needed)
-const ADMIN_USER = 'Adarsh';
+const ADMIN_USER = 'adarsh';
 const ADMIN_PASS = '13223LOVE';  // ← Change this to your preferred password
 // ============================================================
 
