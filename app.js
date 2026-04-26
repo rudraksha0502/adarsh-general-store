@@ -6,11 +6,11 @@
 // ============================================================
 // ⚙️ CONFIGURATION — REPLACE THESE WITH YOUR OWN VALUES
 // ============================================================
-const SUPABASE_URL    = 'YOUR_SUPABASE_URL';         // e.g. https://xyzxyz.supabase.co
-const SUPABASE_ANON   = 'YOUR_SUPABASE_ANON_KEY';   // Found in Supabase > Settings > API
-const EMAILJS_SERVICE = 'YOUR_EMAILJS_SERVICE_ID';  // EmailJS Service ID
-const EMAILJS_TEMPLATE= 'YOUR_EMAILJS_TEMPLATE_ID'; // EmailJS Template ID
-const EMAILJS_PUBLIC  = 'YOUR_EMAILJS_PUBLIC_KEY';  // EmailJS Public Key
+const SUPABASE_URL    = 'https://fghjsmevbdypjgzbigti.supabase.co';         // e.g. https://xyzxyz.supabase.co
+const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnaGpzbWV2YmR5cGpnemJpZ3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMDU2NDYsImV4cCI6MjA5Mjc4MTY0Nn0.Pbp_sfEJLqyKRAv3LPMCVMDBz4s6qd3BrsVfJQB8xJk';   // Found in Supabase > Settings > API
+const EMAILJS_SERVICE = 'service_je6d14p';  // EmailJS Service ID
+const EMAILJS_TEMPLATE= 'template_tum9m4w'; // EmailJS Template ID
+const EMAILJS_PUBLIC  = 'Y_K-v20lFfW8kdvPg';  // EmailJS Public Key
 // ============================================================
 
 // Init Supabase client
