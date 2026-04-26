@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Adarsh General Store</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- EmailJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">🛒</span>
+        <div>
+          <div class="logo-name">Adarsh General Store</div>
+          <div class="logo-tagline">Fresh. Local. Trusted.</div>
+        </div>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search products..." oninput="filterProducts()" />
+      </div>
+      <button class="cart-btn" onclick="toggleCart()">
+        🛍️ Cart <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main>
+
+    <!-- Category Filter Bar -->
+    <div class="category-bar" id="categoryBar">
+      <button class="cat-btn active" onclick="filterByCategory('all', this)">All</button>
+      <!-- More buttons injected by JS -->
+    </div>
+
+    <!-- Products Grid -->
+    <div class="products-section">
+      <div id="productGrid" class="product-grid">
+        <!-- Products injected by JS -->
+        <div class="loading-msg">Loading products... ⏳</div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== CART SIDEBAR ===== -->
+  <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+  <div class="cart-sidebar" id="cartSidebar">
+    <div class="cart-header">
+      <h2>Your Cart 🛍️</h2>
+      <button class="close-btn" onclick="toggleCart()">✕</button>
+    </div>
+    <div id="cartItems" class="cart-items">
+      <!-- Cart items injected by JS -->
+      <p class="empty-cart">Your cart is empty!</p>
+    </div>
+    <div class="cart-footer" id="cartFooter" style="display:none">
+      <div class="cart-total">Total: ₹<span id="cartTotal">0</span></div>
+      <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
+    </div>
+  </div>
+
+  <!-- ===== PRODUCT MODAL ===== -->
+  <div class="modal-overlay" id="productModal" onclick="closeProductModal(event)">
+    <div class="modal-box" id="modalContent">
+      <!-- Product detail injected by JS -->
+    </div>
+  </div>
+
+  <!-- ===== CHECKOUT MODAL ===== -->
+  <div class="modal-overlay" id="checkoutModal" onclick="closeCheckoutModal(event)">
+    <div class="modal-box checkout-modal-box">
+      <h2>Checkout 📦</h2>
+      <p class="cod-badge">💵 Cash on Delivery Only</p>
+
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="custName" placeholder="Your name" />
+      </div>
+      <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="tel" id="custPhone" placeholder="10-digit mobile number" />
+      </div>
+      <div class="form-group">
+        <label>Delivery Address *</label>
+        <textarea id="custAddress" placeholder="House No, Street, Area, City"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Pincode *</label>
+        <input type="text" id="custPincode" placeholder="6-digit pincode" />
+      </div>
+
+      <div class="order-summary" id="orderSummary">
+        <!-- Summary injected by JS -->
+      </div>
+
+      <button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()">
+        🎉 Place Order (Cash on Delivery)
+      </button>
+      <button class="cancel-btn" onclick="closeCheckoutModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ===== SUCCESS MODAL ===== -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal-box success-box">
+      <div class="success-icon">✅</div>
+      <h2>Order Placed!</h2>
+      <p>Thank you for your order. We'll contact you shortly to confirm delivery.</p>
+      <p class="cod-note">💵 Please keep cash ready on delivery.</p>
+      <button class="place-order-btn" onclick="closeSuccessModal()">Continue Shopping</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
