@@ -10,14 +10,19 @@ const SUPABASE_URL    = 'https://fghjsmevbdypjgzbigti.supabase.co';         // e
 const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnaGpzbWV2YmR5cGpnemJpZ3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMDU2NDYsImV4cCI6MjA5Mjc4MTY0Nn0.Pbp_sfEJLqyKRAv3LPMCVMDBz4s6qd3BrsVfJQB8xJk';   // Found in Supabase > Settings > API
 const EMAILJS_SERVICE = 'service_je6d14p';  // EmailJS Service ID
 const EMAILJS_TEMPLATE= 'template_tum9m4w'; // EmailJS Template ID
-const EMAILJS_PUBLIC  = 'Y_K-v20lFfW8kdvPg';  // EmailJS Public Key
+const EMAILJS_PUBLIC  = 'Y_K-v20lFfW8kdvPg';// EmailJS Public Key
 // ============================================================
 
-// Init Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+// Safe init — won't crash if keys are still placeholders
+let supabase;
+try {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+} catch(e) {
+  console.warn('Supabase init failed — check your keys in app.js');
+}
 
-// Init EmailJS
-emailjs.init(EMAILJS_PUBLIC);
+// Safe EmailJS init
+try { emailjs.init(EMAILJS_PUBLIC); } catch(e) {}
 
 // ============================================================
 // STATE
@@ -42,6 +47,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 // FETCH CATEGORIES
 // ============================================================
 async function fetchCategories() {
+  if (!supabase) return;
   const { data, error } = await supabase
     .from('categories')
     .select('*')
@@ -71,6 +77,10 @@ function renderCategoryBar() {
 // FETCH PRODUCTS
 // ============================================================
 async function fetchProducts() {
+  if (!supabase) {
+    document.getElementById('productGrid').innerHTML = '<p class="no-products">⚠️ Add your Supabase keys in app.js to load products.</p>';
+    return;
+  }
   const { data, error } = await supabase
     .from('products')
     .select(`*, categories(name)`)  // join categories
@@ -459,4 +469,5 @@ function showToast(msg, type = '') {
   toast.textContent = msg;
   toast.className = `toast ${type} show`;
   setTimeout(() => toast.classList.remove('show'), 2800);
-}
+     }
+     
