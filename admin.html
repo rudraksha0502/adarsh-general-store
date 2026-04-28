@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin — Adarsh General Store</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 </head>
 <body class="admin-body">
 
-  <!-- ===== LOGIN SCREEN ===== -->
+  <!-- LOGIN -->
   <div class="login-wrapper" id="loginWrapper">
     <div class="login-card">
       <span class="logo-icon">🔐</span>
@@ -29,10 +28,8 @@
     </div>
   </div>
 
-  <!-- ===== ADMIN PANEL (hidden until login) ===== -->
+  <!-- ADMIN PANEL -->
   <div id="adminPanel" style="display:none">
-
-    <!-- Header -->
     <header class="admin-header">
       <div class="logo">
         <span class="logo-icon">🛒</span>
@@ -52,9 +49,9 @@
 
     <div class="admin-main">
 
-      <!-- ===== DASHBOARD ===== -->
+      <!-- DASHBOARD -->
       <section class="admin-section active" id="secDashboard">
-        <div class="stats-row" id="statsRow">
+        <div class="stats-row">
           <div class="stat-card"><div class="stat-num" id="statProducts">—</div><div class="stat-label">Products</div></div>
           <div class="stat-card"><div class="stat-num" id="statCategories">—</div><div class="stat-label">Categories</div></div>
         </div>
@@ -63,101 +60,55 @@
           <p style="color:var(--gray-700);line-height:1.7">
             Use the navigation above to manage your store.<br/>
             <strong>Categories</strong> — add/edit/delete product categories.<br/>
-            <strong>Products</strong> — add/edit/delete products with images & variants.<br/>
+            <strong>Products</strong> — add/edit/delete products with images &amp; variants.<br/>
             <strong>Settings</strong> — change the order email address.
           </p>
         </div>
       </section>
 
-      <!-- ===== CATEGORIES ===== -->
+      <!-- CATEGORIES -->
       <section class="admin-section" id="secCategories">
         <div class="admin-card">
           <h3>🏷️ Category Management</h3>
-
-          <!-- Add/Edit form -->
-          <div id="catFormWrapper">
-            <div class="admin-form" style="grid-template-columns:1fr auto">
-              <div class="form-group">
-                <label>Category Name</label>
-                <input type="text" id="catNameInput" placeholder="e.g. Grocery, Snacks..." />
-              </div>
-              <div class="form-actions" style="align-items:flex-end">
-                <button class="btn-save" onclick="saveCategory()">💾 Save</button>
-                <button class="btn-cancel-sm" onclick="resetCatForm()">Cancel</button>
-              </div>
+          <div class="admin-form" style="grid-template-columns:1fr auto">
+            <div class="form-group">
+              <label>Category Name</label>
+              <input type="text" id="catNameInput" placeholder="e.g. Grocery, Snacks..." />
             </div>
-            <input type="hidden" id="editCatId" value="" />
+            <div class="form-actions" style="align-items:flex-end">
+              <button class="btn-save" onclick="saveCategory()">💾 Save</button>
+              <button class="btn-cancel-sm" onclick="resetCatForm()">Cancel</button>
+            </div>
           </div>
-
-          <!-- Table -->
+          <input type="hidden" id="editCatId" value="" />
           <div style="overflow-x:auto;margin-top:20px">
-            <table class="admin-table" id="catTable">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Category Name</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="catTableBody">
-                <tr><td colspan="3" style="text-align:center;color:var(--gray-400)">Loading...</td></tr>
-              </tbody>
+            <table class="admin-table">
+              <thead><tr><th>#</th><th>Category Name</th><th>Actions</th></tr></thead>
+              <tbody id="catTableBody"><tr><td colspan="3" style="text-align:center;color:var(--gray-400)">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <!-- ===== PRODUCTS ===== -->
+      <!-- PRODUCTS -->
       <section class="admin-section" id="secProducts">
         <div class="admin-card">
           <h3>📦 Product Management</h3>
-
-          <!-- Toggle button -->
-          <button class="btn-add" id="toggleProductFormBtn" onclick="toggleProductForm()">
-            ＋ Add New Product
-          </button>
-
-          <!-- Product Form (hidden by default) -->
+          <button class="btn-add" id="toggleProductFormBtn" onclick="toggleProductForm()">＋ Add New Product</button>
           <div id="productFormWrapper" style="display:none">
             <div class="admin-form">
-              <div class="form-group">
-                <label>Product Name *</label>
-                <input type="text" id="prodName" placeholder="e.g. Basmati Rice" />
-              </div>
-              <div class="form-group">
-                <label>Category *</label>
-                <select id="prodCategory">
-                  <option value="">Select category...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Base Price (₹) *</label>
-                <input type="number" id="prodBasePrice" placeholder="e.g. 99" min="0" />
-              </div>
-              <div class="form-group">
-                <label>Product Image</label>
-                <input type="file" id="prodImage" accept="image/*" onchange="previewImage(event)" />
-                <img id="imgPreview" class="img-preview" alt="Preview" />
-              </div>
+              <div class="form-group"><label>Product Name *</label><input type="text" id="prodName" placeholder="e.g. Basmati Rice" /></div>
+              <div class="form-group"><label>Category *</label><select id="prodCategory"><option value="">Select category...</option></select></div>
+              <div class="form-group"><label>Base Price (₹) *</label><input type="number" id="prodBasePrice" placeholder="e.g. 99" min="0" /></div>
+              <div class="form-group"><label>Product Image</label><input type="file" id="prodImage" accept="image/*" onchange="previewImage(event)" /><img id="imgPreview" class="img-preview" alt="Preview" /></div>
+              <div class="form-group full-width"><label>Description</label><textarea id="prodDesc" placeholder="Short product description..."></textarea></div>
               <div class="form-group full-width">
-                <label>Description</label>
-                <textarea id="prodDesc" placeholder="Short product description..."></textarea>
+                <label>Variants (optional)</label>
+                <div class="variants-builder" id="variantsBuilder"></div>
+                <button class="btn-add-variant" onclick="addVariantRow()" style="margin-top:10px">＋ Add Variant</button>
               </div>
-
-              <!-- Variants -->
-              <div class="form-group full-width">
-                <label>Variants (optional — size/weight options)</label>
-                <div class="variants-builder" id="variantsBuilder">
-                  <!-- Variant rows injected here -->
-                </div>
-                <button class="btn-add-variant" onclick="addVariantRow()" style="margin-top:10px">
-                  ＋ Add Variant
-                </button>
-              </div>
-
               <input type="hidden" id="editProdId" value="" />
               <input type="hidden" id="existingImageUrl" value="" />
-
               <div class="form-actions full-width">
                 <button class="btn-save" onclick="saveProduct()">💾 Save Product</button>
                 <button class="btn-cancel-sm" onclick="cancelProductForm()">Cancel</button>
@@ -165,30 +116,17 @@
             </div>
           </div>
         </div>
-
-        <!-- Products Table -->
         <div class="admin-card">
           <div style="overflow-x:auto">
-            <table class="admin-table" id="prodTable">
-              <thead>
-                <tr>
-                  <th>Image</th>
-                  <th>Name</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>Variants</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="prodTableBody">
-                <tr><td colspan="6" style="text-align:center;color:var(--gray-400)">Loading...</td></tr>
-              </tbody>
+            <table class="admin-table">
+              <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Variants</th><th>Actions</th></tr></thead>
+              <tbody id="prodTableBody"><tr><td colspan="6" style="text-align:center;color:var(--gray-400)">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <!-- ===== SETTINGS ===== -->
+      <!-- SETTINGS -->
       <section class="admin-section" id="secSettings">
         <div class="admin-card">
           <h3>⚙️ Store Settings</h3>
@@ -196,28 +134,22 @@
             <div class="form-group">
               <label>Order Notification Email</label>
               <input type="email" id="orderEmail" placeholder="your@email.com" />
-              <small style="color:var(--gray-400);font-size:0.78rem;margin-top:4px;display:block">
-                Note: This updates the stored setting. To actually change where EmailJS sends emails,
-                update the recipient in your EmailJS template as well.
-              </small>
+              <small style="color:var(--gray-400);font-size:0.78rem;margin-top:4px;display:block">Update your EmailJS template email too.</small>
             </div>
-            <div class="form-group">
-              <label>Store Name</label>
-              <input type="text" id="storeName" value="Adarsh General Store" />
-            </div>
-            <div class="form-actions" style="grid-column:1">
-              <button class="btn-save" onclick="saveSettings()">💾 Save Settings</button>
-            </div>
+            <div class="form-group"><label>Store Name</label><input type="text" id="storeName" value="Adarsh General Store" /></div>
+            <div class="form-actions"><button class="btn-save" onclick="saveSettings()">💾 Save Settings</button></div>
           </div>
         </div>
       </section>
 
-    </div><!-- end admin-main -->
-  </div><!-- end adminPanel -->
+    </div>
+  </div>
 
-  <!-- Toast -->
   <div class="toast" id="adminToast"></div>
 
+  <!-- Scripts at BOTTOM in correct dependency order -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="admin.js"></script>
 </body>
-</html>
+            </html>
+                                                                                                                  
