@@ -645,7 +645,7 @@ body.admin-body { background: #F0EDE8; }
 
 /* ─── Responsive ─────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .nav-search { display: none; }
+  .nav-search { display: flex; }
   .product-grid { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: .9rem; }
   .product-card-img, .product-card-img-placeholder { height: 155px; }
   .cart-sidebar { width: 100vw; }
