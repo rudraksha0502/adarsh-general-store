@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Adarsh General Store</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>"/>
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- EmailJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+</head>
+<body>
+
+<!-- ════════ NAVBAR ════════ -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">🛒 Adarsh <span>General Store</span></div>
+
+    <div class="nav-search">
+      <input
+        type="search"
+        id="search-input"
+        placeholder="Search products…"
+        autocomplete="off"
+        aria-label="Search products"
+      />
+      <span class="search-icon" aria-hidden="true">🔍</span>
+    </div>
+
+    <div class="nav-right">
+      <button class="cart-btn" id="cart-open-btn" aria-label="Open cart">
+        🛒 Cart <span class="cart-badge" id="cart-count">0</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════ HERO ════════ -->
+<section class="hero">
+  <div class="hero-content">
+    <h1>आदर्श General Store</h1>
+    <p>Fresh groceries &amp; everyday essentials · Cash on Delivery · Free delivery above ₹500</p>
+  </div>
+</section>
+
+<!-- ════════ CATEGORY BAR ════════ -->
+<div class="category-bar" id="category-bar">
+  <div class="category-bar-inner" id="category-list">
+    <button class="cat-btn active" data-id="all">All Items</button>
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- ════════ PRODUCTS ════════ -->
+<section class="products-section">
+  <div class="section-header">
+    <h2 class="section-title" id="section-title">All Products</h2>
+    <span class="product-count" id="product-count"></span>
+  </div>
+  <div id="products-container">
+    <div class="spinner-wrap"><div class="spinner"></div></div>
+  </div>
+</section>
+
+<!-- ════════ PRODUCT DETAIL MODAL ════════ -->
+<div class="modal-overlay" id="product-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box" id="product-modal-box">
+    <button class="modal-close" id="product-modal-close" aria-label="Close">✕</button>
+    <div id="product-modal-content"></div>
+  </div>
+</div>
+
+<!-- ════════ CART SIDEBAR ════════ -->
+<div class="cart-overlay" id="cart-overlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="cart-sidebar">
+    <div class="cart-head">
+      <h2>🛒 Your Cart</h2>
+      <button class="cart-head-close" id="cart-close-btn" aria-label="Close cart">✕</button>
+    </div>
+    <div class="cart-items" id="cart-items-container"></div>
+    <div class="cart-foot" id="cart-foot">
+      <div class="cart-total">Total: <strong id="cart-total-display">₹0</strong></div>
+      <button class="checkout-btn" id="open-checkout-btn">Proceed to Checkout →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CHECKOUT MODAL ════════ -->
+<div class="modal-overlay" id="checkout-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box checkout-box">
+    <button class="modal-close" id="checkout-modal-close" aria-label="Close">✕</button>
+    <h2 class="checkout-title">📦 Place Your Order</h2>
+    <p class="checkout-sub">Cash on Delivery · No payment needed now</p>
+
+    <div class="form-group">
+      <label for="c-name">Full Name *</label>
+      <input type="text" id="c-name" placeholder="Ramesh Kumar" autocomplete="name"/>
+    </div>
+    <div class="form-group">
+      <label for="c-phone">Phone Number *</label>
+      <input type="tel" id="c-phone" placeholder="9876543210" maxlength="10" autocomplete="tel"/>
+    </div>
+    <div class="form-group">
+      <label for="c-address">Delivery Address *</label>
+      <textarea id="c-address" rows="3" placeholder="House No., Street, Area, City, State" autocomplete="street-address"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="c-pincode">Pincode *</label>
+      <input type="text" id="c-pincode" placeholder="110001" maxlength="6" inputmode="numeric"/>
+    </div>
+
+    <div class="order-summary">
+      <h3>Order Summary</h3>
+      <div id="checkout-item-lines"></div>
+      <div class="order-total-line">Grand Total: <strong id="checkout-grand-total">₹0</strong></div>
+    </div>
+
+    <button class="place-order-btn" id="place-order-btn">✅ Place Order (Cash on Delivery)</button>
+    <div class="order-status" id="order-status-msg"></div>
+  </div>
+</div>
+
+<!-- ════════ TOAST ════════ -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ════════ FOOTER ════════ -->
+<footer class="footer">
+  <p>© 2025 <strong>Adarsh General Store</strong> · Cash on Delivery only · All rights reserved</p>
+</footer>
+
+<!-- Scripts -->
+<script src="supabase.js"></script>
+<script src="email.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
