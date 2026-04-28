@@ -653,3 +653,29 @@ body.admin-body { background: #F0EDE8; }
   .admin-wrap { padding: 0 .9rem; }
   .admin-card { padding: 1.2rem; }
 }
+/* FORCE SHOW SEARCH BAR ON MOBILE */
+@media (max-width: 640px) {
+
+  .nav-inner {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px;
+  }
+
+  .nav-search {
+    display: flex !important;
+    width: 100%;
+    order: 3;
+    margin-top: 8px;
+  }
+
+  .nav-search input {
+    width: 100%;
+    background: white;
+    color: black;
+  }
+
+  .nav-search .search-icon {
+    color: black;
+  }
+     }
