@@ -828,3 +828,74 @@ body.admin-body { background: #F0EDE8; }
     font-size: 1.1rem;
   }
    }
+/* Admin Navbar Fix */
+.admin-nav {
+  background: var(--teal-dk);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,.3);
+}
+
+.admin-nav .nav-inner {
+  max-width: 1280px;
+  margin: auto;
+  padding: 0 1.5rem;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-nav .nav-logo {
+  font-family: 'Tiro Devanagari Latin', serif;
+  font-size: 1.2rem;
+  color: var(--saffron);
+  white-space: nowrap;
+}
+
+.admin-nav-links {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-nav-link {
+  padding: 0.35rem 0.9rem;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.8);
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: var(--transition);
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-nav-link:hover, 
+.admin-nav-link.active {
+  background: var(--saffron);
+  color: var(--white);
+}
+
+.admin-logout {
+  background: rgba(184,32,32,0.25);
+  border: 1px solid rgba(184,32,32,0.5);
+  color: #FFB0B0;
+  padding: 0.35rem 0.9rem;
+  border-radius: 99px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.admin-logout:hover {
+  background: var(--crimson);
+  color: var(--white);
+  border-color: var(--crimson);
+   }
