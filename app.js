@@ -162,7 +162,9 @@ function renderProductGrid(products) {
 
   products.forEach(p => {
     const variants = parseVariants(p.variants);
-    const lowestPrice = variants.length ? Math.min(...variants.map(v => v.price)) : (p.baseprice || 0);
+    const sellingPrice = variants.length ? Math.min(...variants.map(v => v.price)) : (p.baseprice || 0);
+    const mrpPrice = p.mrp || sellingPrice;
+    const discountPercent = p.discount_percent || (mrpPrice > sellingPrice ? Math.round(((mrpPrice - sellingPrice)/mrpPrice)*100) : 0);
     const catName = p.categories?.name || "";
 
     const card = document.createElement("div");
@@ -175,16 +177,23 @@ function renderProductGrid(products) {
       ? `<img class="product-card-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}" loading="lazy"/>`
       : `<div class="product-card-img-placeholder">🥬</div>`;
 
+    // YAHAN PRICE HTML CHANGE KARO
+    const priceHtml = `
+      <div class="product-card-price">
+        <span class="selling-price">₹${sellingPrice.toLocaleString("en-IN")}</span>
+        ${mrpPrice > sellingPrice ? `<span class="mrp-price">₹${mrpPrice.toLocaleString("en-IN")}</span>` : ""}
+        ${discountPercent > 0 ? `<span class="discount-badge">-${discountPercent}%</span>` : ""}
+        ${variants.length ? "<small> onwards</small>" : ""}
+      </div>
+    `;
+
     card.innerHTML = `
       ${imgHtml}
       <div class="product-card-body">
         ${catName ? `<div class="product-card-category">${escHtml(catName)}</div>` : ""}
         <div class="product-card-name">${escHtml(p.name)}</div>
         <div class="product-card-desc">${escHtml(p.description || "")}</div>
-        <div class="product-card-price">
-          ₹${lowestPrice.toLocaleString("en-IN")}
-          ${variants.length ? "<small> onwards</small>" : ""}
-        </div>
+        ${priceHtml}
         <button class="product-card-btn">View Details</button>
       </div>`;
 
@@ -198,7 +207,6 @@ function renderProductGrid(products) {
   container.innerHTML = "";
   container.appendChild(grid);
 }
-
 /* ══════════════════════════════════════════════════════════
    PRODUCT DETAIL MODAL
 ══════════════════════════════════════════════════════════ */
@@ -216,7 +224,12 @@ function renderProductModal() {
   const p       = modalProduct;
   const variants = parseVariants(p.variants);
   const price   = modalVariant ? modalVariant.price : (p.baseprice || 0);
+  const mrpPrice = p.mrp || price;
+  const discountPercent = p.discount_percent || (mrpPrice > price ? Math.round(((mrpPrice - price)/mrpPrice)*100) : 0);
   const catName = p.categories?.name || "";
+  
+  // Current quantity variable (will be used inside)
+  let currentQty = 1;
 
   const imgHtml = p.imageurl
     ? `<img class="modal-prod-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}"/>`
@@ -230,13 +243,32 @@ function renderProductModal() {
     variantsHtml = `<div class="variant-label">Choose variant:</div><div class="variant-chips">${chips}</div>`;
   }
 
+  // NAYA HTML with MRP and Quantity Selector
   document.getElementById("product-modal-content").innerHTML = `
     ${imgHtml}
     ${catName ? `<div class="modal-prod-category">${escHtml(catName)}</div>` : ""}
     <h2 class="modal-prod-name">${escHtml(p.name)}</h2>
     <p class="modal-prod-desc">${escHtml(p.description || "")}</p>
-    <div class="modal-prod-price" id="modal-price-display">₹${price.toLocaleString("en-IN")}</div>
+    
+    <!-- NAYA PRICE SECTION WITH MRP -->
+    <div class="modal-price-section">
+      <span class="selling-price-large" id="modal-price-display">₹${price.toLocaleString("en-IN")}</span>
+      ${mrpPrice > price ? `<span class="mrp-price-large">₹${mrpPrice.toLocaleString("en-IN")}</span>` : ""}
+      ${discountPercent > 0 ? `<span class="discount-badge-large">-${discountPercent}% OFF</span>` : ""}
+    </div>
+    
     ${variantsHtml}
+    
+    <!-- NAYA QUANTITY SELECTOR -->
+    <div class="quantity-selector">
+      <span class="qty-label">Quantity:</span>
+      <div class="qty-controls">
+        <button class="qty-decr" id="modal-qty-decr">−</button>
+        <span class="qty-value" id="modal-qty-value">1</span>
+        <button class="qty-incr" id="modal-qty-incr">+</button>
+      </div>
+    </div>
+    
     <button class="add-cart-btn" id="modal-add-cart-btn">🛒 Add to Cart</button>
   `;
 
@@ -245,30 +277,53 @@ function renderProductModal() {
     chip.addEventListener("click", () => {
       const idx = +chip.dataset.idx;
       modalVariant = variants[idx];
-      document.getElementById("modal-price-display").textContent =
-        `₹${modalVariant.price.toLocaleString("en-IN")}`;
+      const newPrice = modalVariant.price;
+      document.getElementById("modal-price-display").textContent = `₹${newPrice.toLocaleString("en-IN")}`;
       document.querySelectorAll(".variant-chip").forEach(c => c.classList.toggle("active", c === chip));
     });
   });
 
-  document.getElementById("modal-add-cart-btn").addEventListener("click", () => {
-    const price = modalVariant ? modalVariant.price : (modalProduct.baseprice || 0);
-    cartAdd({
-      productId:   modalProduct.id,
-      name:        modalProduct.name,
-      imageUrl:    modalProduct.imageurl || null,
-      price,
-      variantName: modalVariant ? modalVariant.name : null,
+  /* QUANTITY SELECTOR EVENT HANDLERS */
+  const qtySpan = document.getElementById("modal-qty-value");
+  const decrBtn = document.getElementById("modal-qty-decr");
+  const incrBtn = document.getElementById("modal-qty-incr");
+  
+  if (decrBtn) {
+    decrBtn.addEventListener("click", () => {
+      if (currentQty > 1) {
+        currentQty--;
+        qtySpan.textContent = currentQty;
+      }
     });
-    closeProductModal();
-    showToast(`✅ "${modalProduct.name}" added to cart!`);
-  });
-}
+  }
+  
+  if (incrBtn) {
+    incrBtn.addEventListener("click", () => {
+      currentQty++;
+      qtySpan.textContent = currentQty;
+    });
+  }
 
-function closeProductModal() {
-  document.getElementById("product-modal").style.display = "none";
-  document.body.style.overflow = "";
-}
+  /* ADD TO CART WITH QUANTITY */
+  document.getElementById("modal-add-cart-btn").addEventListener("click", () => {
+    const finalPrice = modalVariant ? modalVariant.price : (modalProduct.baseprice || 0);
+    
+    // Add product 'currentQty' times
+    for (let i = 0; i < currentQty; i++) {
+      cartAdd({
+        productId:   modalProduct.id,
+        name:        modalProduct.name,
+        imageUrl:    modalProduct.imageurl || null,
+        price:       finalPrice,
+        variantName: modalVariant ? modalVariant.name : null,
+      });
+    }
+    
+    closeProductModal();
+    showToast(`✅ ${currentQty} × "${modalProduct.name}" added to cart!`);
+    currentQty = 1; // Reset for next time
+  });
+  }
 
 /* ══════════════════════════════════════════════════════════
    CART SIDEBAR
