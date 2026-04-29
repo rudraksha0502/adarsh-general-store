@@ -731,3 +731,15 @@ body.admin-body { background: #F0EDE8; }
   color: #1A6B6B;
   margin-top: 0.2rem;
 }
+/* Force search bar on mobile */
+@media (max-width: 768px) {
+  .nav-search {
+    display: flex !important;
+    width: 100% !important;
+    order: 3;
+    margin-top: 0.5rem;
+  }
+  .nav-search input {
+    width: 100% !important;
+  }
+}
