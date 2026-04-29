@@ -685,3 +685,32 @@ body.admin-body { background: #F0EDE8; }
   background: white;
   cursor: pointer;
      }
+/* MRP and Discount Styles */
+.mrp-price {
+  text-decoration: line-through;
+  color: #9A9A9A;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+.discount-badge {
+  background: #B82020;
+  color: white;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 99px;
+  margin-left: 0.5rem;
+}
+.selling-price {
+  font-weight: 800;
+  color: #C06E0C;
+}
+.selling-price-large {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #C06E0C;
+}
+.cart-item-saving {
+  font-size: 0.7rem;
+  color: #1A6B6B;
+  margin-top: 0.2rem;
+}
