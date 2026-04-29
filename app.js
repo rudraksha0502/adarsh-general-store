@@ -45,7 +45,23 @@ function cartClear() {
   cartSave();
   renderCartBadge();
 }
+function renderCartItem(item, index) {
+  return `
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name}</div>
 
+        <div class="qty-row">
+          <button class="qty-btn" onclick="updateQty(${index}, -1)">−</button>
+          <span class="qty-val">${item.qty}</span>
+          <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+        </div>
+
+        <div class="cart-item-price">₹${item.price * item.qty}</div>
+      </div>
+    </div>
+  `;
+}
 /* ══════════════════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════════════════ */
