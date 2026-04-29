@@ -152,8 +152,7 @@ function showProductsError(msg) {
 function renderProductGrid(products) {
   const container = document.getElementById("products-container");
   if (!products.length) {
-    container.innerHTML =
-      `<div class="state-box"><div class="state-icon">🔍</div><p>No products found.</p></div>`;
+    container.innerHTML = `<div class="state-box"><div class="state-icon">🔍</div><p>No products found.</p></div>`;
     return;
   }
 
@@ -162,30 +161,19 @@ function renderProductGrid(products) {
 
   products.forEach(p => {
     const variants = parseVariants(p.variants);
-    const sellingPrice = variants.length ? Math.min(...variants.map(v => v.price)) : (p.baseprice || 0);
-    const mrpPrice = p.mrp || sellingPrice;
-    const discountPercent = p.discount_percent || (mrpPrice > sellingPrice ? Math.round(((mrpPrice - sellingPrice)/mrpPrice)*100) : 0);
+    const lowestPrice = variants.length ? Math.min(...variants.map(v => v.price)) : (p.baseprice || 0);
     const catName = p.categories?.name || "";
+    const mrp = p.mrp || lowestPrice;
+    const discount = mrp > lowestPrice ? Math.round(((mrp - lowestPrice)/mrp)*100) : 0;
 
     const card = document.createElement("div");
     card.className = "product-card";
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
-    card.setAttribute("aria-label", `View ${p.name}`);
 
     const imgHtml = p.imageurl
       ? `<img class="product-card-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}" loading="lazy"/>`
       : `<div class="product-card-img-placeholder">🥬</div>`;
-
-    // YAHAN PRICE HTML CHANGE KARO
-    const priceHtml = `
-      <div class="product-card-price">
-        <span class="selling-price">₹${sellingPrice.toLocaleString("en-IN")}</span>
-        ${mrpPrice > sellingPrice ? `<span class="mrp-price">₹${mrpPrice.toLocaleString("en-IN")}</span>` : ""}
-        ${discountPercent > 0 ? `<span class="discount-badge">-${discountPercent}%</span>` : ""}
-        ${variants.length ? "<small> onwards</small>" : ""}
-      </div>
-    `;
 
     card.innerHTML = `
       ${imgHtml}
@@ -193,20 +181,23 @@ function renderProductGrid(products) {
         ${catName ? `<div class="product-card-category">${escHtml(catName)}</div>` : ""}
         <div class="product-card-name">${escHtml(p.name)}</div>
         <div class="product-card-desc">${escHtml(p.description || "")}</div>
-        ${priceHtml}
+        <div class="product-card-price">
+          <span class="selling-price">₹${lowestPrice.toLocaleString("en-IN")}</span>
+          ${mrp > lowestPrice ? `<span class="mrp-price">₹${mrp.toLocaleString("en-IN")}</span>` : ""}
+          ${discount > 0 ? `<span class="discount-badge">-${discount}%</span>` : ""}
+          ${variants.length ? "<small> onwards</small>" : ""}
+        </div>
         <button class="product-card-btn">View Details</button>
       </div>`;
 
     card.querySelector(".product-card-btn").addEventListener("click", e => { e.stopPropagation(); openProductModal(p); });
     card.addEventListener("click", () => openProductModal(p));
-    card.addEventListener("keydown", e => { if (e.key === "Enter") openProductModal(p); });
-
     grid.appendChild(card);
   });
 
   container.innerHTML = "";
   container.appendChild(grid);
-}
+     }
 /* ══════════════════════════════════════════════════════════
    PRODUCT DETAIL MODAL
 ══════════════════════════════════════════════════════════ */
@@ -303,27 +294,69 @@ function renderProductModal() {
       qtySpan.textContent = currentQty;
     });
   }
+function renderProductModal() {
+  const p = modalProduct;
+  const variants = parseVariants(p.variants);
+  const price = modalVariant ? modalVariant.price : (p.baseprice || 0);
+  const mrp = p.mrp || price;
+  const discount = mrp > price ? Math.round(((mrp - price)/mrp)*100) : 0;
+  const catName = p.categories?.name || "";
 
-  /* ADD TO CART WITH QUANTITY */
+  const imgHtml = p.imageurl
+    ? `<img class="modal-prod-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}"/>`
+    : `<div class="modal-prod-img-placeholder">🥬</div>`;
+
+  let variantsHtml = "";
+  if (variants.length) {
+    const chips = variants.map((v, i) =>
+      `<button class="variant-chip ${i === 0 ? "active" : ""}" data-idx="${i}">${escHtml(v.name)} — ₹${v.price.toLocaleString("en-IN")}</button>`
+    ).join("");
+    variantsHtml = `<div class="variant-label">Choose variant:</div><div class="variant-chips">${chips}</div>`;
+  }
+
+  document.getElementById("product-modal-content").innerHTML = `
+    ${imgHtml}
+    ${catName ? `<div class="modal-prod-category">${escHtml(catName)}</div>` : ""}
+    <h2 class="modal-prod-name">${escHtml(p.name)}</h2>
+    <p class="modal-prod-desc">${escHtml(p.description || "")}</p>
+    <div class="modal-prod-price">
+      <span class="selling-price-large">₹${price.toLocaleString("en-IN")}</span>
+      ${mrp > price ? `<span class="mrp-price">₹${mrp.toLocaleString("en-IN")}</span>` : ""}
+      ${discount > 0 ? `<span class="discount-badge">-${discount}%</span>` : ""}
+    </div>
+    ${variantsHtml}
+    <button class="add-cart-btn" id="modal-add-cart-btn">🛒 Add to Cart</button>
+  `;
+
+  document.querySelectorAll(".variant-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const idx = +chip.dataset.idx;
+      modalVariant = variants[idx];
+      const newPrice = modalVariant.price;
+      const newMrp = modalProduct.mrp || newPrice;
+      const newDiscount = newMrp > newPrice ? Math.round(((newMrp - newPrice)/newMrp)*100) : 0;
+      document.querySelector(".modal-prod-price").innerHTML = `
+        <span class="selling-price-large">₹${newPrice.toLocaleString("en-IN")}</span>
+        ${newMrp > newPrice ? `<span class="mrp-price">₹${newMrp.toLocaleString("en-IN")}</span>` : ""}
+        ${newDiscount > 0 ? `<span class="discount-badge">-${newDiscount}%</span>` : ""}
+      `;
+      document.querySelectorAll(".variant-chip").forEach(c => c.classList.toggle("active", c === chip));
+    });
+  });
+
   document.getElementById("modal-add-cart-btn").addEventListener("click", () => {
     const finalPrice = modalVariant ? modalVariant.price : (modalProduct.baseprice || 0);
-    
-    // Add product 'currentQty' times
-    for (let i = 0; i < currentQty; i++) {
-      cartAdd({
-        productId:   modalProduct.id,
-        name:        modalProduct.name,
-        imageUrl:    modalProduct.imageurl || null,
-        price:       finalPrice,
-        variantName: modalVariant ? modalVariant.name : null,
-      });
-    }
-    
+    cartAdd({
+      productId: modalProduct.id,
+      name: modalProduct.name,
+      imageUrl: modalProduct.imageurl || null,
+      price: finalPrice,
+      variantName: modalVariant ? modalVariant.name : null,
+    });
     closeProductModal();
-    showToast(`✅ ${currentQty} × "${modalProduct.name}" added to cart!`);
-    currentQty = 1; // Reset for next time
+    showToast(`✅ "${modalProduct.name}" added to cart!`);
   });
-  }
+                                                                                 }
 
 /* ══════════════════════════════════════════════════════════
    CART SIDEBAR
