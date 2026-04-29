@@ -363,13 +363,26 @@ function renderCartItems() {
       ? `<img class="cart-item-img" src="${escHtml(item.imageUrl)}" alt="${escHtml(item.name)}"/>`
       : `<div class="cart-item-img-placeholder">🥬</div>`;
 
+    // Find product details to calculate saving (agar MRP available ho)
+    const product = allProducts.find(p => p.id === item.productId);
+    let savingHtml = '';
+    if (product && product.mrp && product.mrp > item.price) {
+      const savingPerItem = product.mrp - item.price;
+      const totalSaving = savingPerItem * item.qty;
+      savingHtml = `<div class="cart-item-saving">✨ Saved ₹${totalSaving.toLocaleString("en-IN")}</div>`;
+    }
+
     return `
       <div class="cart-item">
         ${imgHtml}
         <div class="cart-item-info">
           <div class="cart-item-name">${escHtml(item.name)}</div>
           ${item.variantName ? `<div class="cart-item-variant">${escHtml(item.variantName)}</div>` : ""}
-          <div class="cart-item-price">₹${(item.price * item.qty).toLocaleString("en-IN")}</div>
+          <div class="cart-item-price">
+            ₹${(item.price * item.qty).toLocaleString("en-IN")}
+            ${product && product.mrp && product.mrp > item.price ? `<span style="font-size:0.7rem; color:var(--light); margin-left:0.5rem;"><s>₹${(product.mrp * item.qty).toLocaleString("en-IN")}</s></span>` : ""}
+          </div>
+          ${savingHtml}
           <div class="qty-row">
             <button class="qty-btn" data-action="dec" data-idx="${i}">−</button>
             <span class="qty-val">${item.qty}</span>
