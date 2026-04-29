@@ -1078,4 +1078,41 @@ body.admin-body { background: #F0EDE8; }
   .categories-nav-btn .cat-label { font-size: .55rem; }
   .categories-nav-btn .cat-icon svg { width: 18px; height: 18px; }
    }
+/* ── Admin nav symmetry fix ─────────────────────────────── */
+.admin-nav .nav-inner {
+  height: auto;
+  min-height: 58px;
+  flex-wrap: wrap;
+  padding: .5rem 1.2rem;
+  gap: .5rem;
+  justify-content: space-between;
+}
+.admin-nav .nav-logo {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  order: 1;
+}
+.admin-nav-links {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+  order: 2;
+}
+.admin-logout {
+  flex-shrink: 0;
+  white-space: nowrap;
+  order: 3;
+}
 
+/* On mobile: links drop to second row, logo+logout stay on top */
+@media (max-width: 768px) {
+  .admin-nav-links {
+    order: 10;
+    width: 100%;
+    justify-content: flex-start;
+    padding-bottom: .3rem;
+  }
+   }
