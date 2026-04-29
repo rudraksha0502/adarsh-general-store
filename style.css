@@ -653,3 +653,35 @@ body.admin-body { background: #F0EDE8; }
   .admin-wrap { padding: 0 .9rem; }
   .admin-card { padding: 1.2rem; }
 }
+/* MRP and Quantity Styles - Only these */
+.mrp-price {
+  text-decoration: line-through;
+  color: #9A9A9A;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+.discount-badge {
+  background: #B82020;
+  color: white;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 99px;
+  margin-left: 0.5rem;
+}
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  background: #F2E8D5;
+  border-radius: 8px;
+}
+.qty-controls button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #DDD0BB;
+  background: white;
+  cursor: pointer;
+     }
