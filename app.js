@@ -502,3 +502,77 @@ function wireEvents() {
   await fetchCategories();
   await fetchProducts();
 })();
+// Add these new functions after existing code
+
+/* ── Add to existing saveProduct function ── */
+// Inside saveProduct(), after getting basePrice, add these lines:
+async function saveProduct() {
+  // ... existing code ...
+  const mrp = parseFloat(document.getElementById("prod-mrp").value);
+  const basePrice = parseFloat(document.getElementById("prod-price").value);
+  
+  // Auto-calculate discount percentage
+  let discountPercent = 0;
+  if (mrp > 0 && basePrice > 0 && mrp > basePrice) {
+    discountPercent = ((mrp - basePrice) / mrp) * 100;
+    discountPercent = Math.round(discountPercent * 10) / 10; // 1 decimal place
+  }
+  
+  // Update the row object:
+  const row = {
+    name,
+    description: desc,
+    baseprice: basePrice,  // selling price
+    mrp: mrp,              // new field
+    discount_percent: discountPercent,  // new field
+    imageurl,
+    category_id: catId,
+    variants: variants.length ? variants : [],
+  };
+  // ... rest remains same ...
+}
+
+// Update resetProductForm function:
+function resetProductForm() {
+  // ... existing code ...
+  document.getElementById("prod-mrp").value = "";
+  document.getElementById("prod-price").value = "";
+  // ... rest ...
+}
+
+// Update startEditProduct function:
+function startEditProduct(productId) {
+  const p = allProducts.find(x => x.id === productId);
+  if (!p) return;
+  // ... existing code ...
+  document.getElementById("prod-mrp").value = p.mrp || "";
+  document.getElementById("prod-price").value = p.baseprice || "";
+  // ... rest ...
+}
+
+// Update renderProductList function (admin side display):
+function renderProductList() {
+  container.innerHTML = allProducts.map(p => {
+    const discountHtml = p.mrp && p.mrp > p.baseprice 
+      ? `<div class="admin-prod-discount">-${p.discount_percent || Math.round(((p.mrp - p.baseprice)/p.mrp)*100)}% OFF</div>`
+      : "";
+    
+    return `
+      <div class="admin-product-item" id="prod-row-${p.id}">
+        ${imgHtml}
+        <div class="admin-prod-info">
+          <div class="admin-prod-name">${escHtml(p.name)}</div>
+          <div class="admin-prod-price">
+            <span class="selling-price">₹${Number(p.baseprice).toLocaleString("en-IN")}</span>
+            ${p.mrp ? `<span class="mrp-price">₹${Number(p.mrp).toLocaleString("en-IN")}</span>` : ""}
+            ${discountHtml}
+          </div>
+          <div class="admin-prod-cat">${escHtml(catName)}</div>
+        </div>
+        <div class="admin-prod-actions">
+          <button class="btn btn-ghost btn-sm" onclick="startEditProduct('${p.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}', '${escHtml(p.name)}')">🗑️</button>
+        </div>
+      </div>`;
+  }).join("");
+   }
