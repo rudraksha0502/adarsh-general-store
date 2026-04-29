@@ -121,25 +121,46 @@ input, textarea, select { font-family: inherit; }
 
 .nav-right { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
 
-/* ── Categories nav button ─────────────────────────────── */
+/* ── Categories nav button — grid icon + label stacked ─── */
 .categories-nav-btn {
-  display: flex; align-items: center; gap: .35rem;
-  background: rgba(255,255,255,.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .18rem;
+  background: rgba(255,255,255,.13);
   color: var(--white);
-  border: 2px solid rgba(255,255,255,.25);
-  padding: .4rem .9rem;
-  border-radius: 99px;
-  font-weight: 700; font-size: .85rem;
+  border: 1.5px solid rgba(255,255,255,.22);
+  padding: .38rem .7rem .32rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
   transition: var(--transition);
   white-space: nowrap;
   flex-shrink: 0;
+  order: -1;
+  min-width: 58px;
 }
 .categories-nav-btn:hover {
-  background: rgba(255,255,255,.28);
+  background: rgba(255,255,255,.24);
   border-color: rgba(255,255,255,.5);
+  transform: translateY(-1px);
 }
-.categories-nav-btn .cat-icon { font-size: 1rem; }
-.categories-nav-btn .cat-label { display: inline; }
+.categories-nav-btn .cat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: var(--white);
+}
+.categories-nav-btn .cat-label {
+  display: block;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.85);
+  line-height: 1;
+   }
 
 .cart-btn {
   display: flex; align-items: center; gap: .4rem;
@@ -1051,3 +1072,10 @@ body.admin-body { background: #F0EDE8; }
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
+/* ── Categories button mobile tweaks ───────────────────── */
+@media (max-width: 768px) {
+  .categories-nav-btn { padding: .32rem .55rem .28rem; min-width: 50px; }
+  .categories-nav-btn .cat-label { font-size: .55rem; }
+  .categories-nav-btn .cat-icon svg { width: 18px; height: 18px; }
+   }
+
