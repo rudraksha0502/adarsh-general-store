@@ -75,6 +75,19 @@
           <input type="number" id="prod-price" placeholder="99" min="0" step="0.01"/>
         </div>
 
+        <!-- Add this after Base Price field -->
+<div class="form-group">
+  <label for="prod-mrp">MRP (₹)</label>
+  <input type="number" id="prod-mrp" placeholder="199" min="0" step="0.01"/>
+  <small style="color:#9A9A9A;font-size:.75rem">Original price before discount</small>
+</div>
+
+<div class="form-group">
+  <label for="prod-price">Selling Price (₹) *</label>
+  <input type="number" id="prod-price" placeholder="149" min="0" step="0.01"/>
+  <small style="color:#9A9A9A;font-size:.75rem">Discounted price customer pays</small>
+</div>
+        
         <div class="form-group">
           <label for="prod-category">Category</label>
           <select id="prod-category">
