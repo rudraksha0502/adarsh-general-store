@@ -6,10 +6,6 @@
   <title>Swift Store</title>
   <link rel="stylesheet" href="style.css"/>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>"/>
-  <!-- Supabase CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <!-- jsPDF CDN (replaces EmailJS — used for invoice generation) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -178,6 +174,12 @@
 </footer>
 
 <!-- Scripts -->
+<script src="supabase.js"></script>
+<script src="telegram.js"></script>
+<script src="app.js"></script>
+<!-- Scripts — all at bottom so page renders first -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="supabase.js"></script>
 <script src="telegram.js"></script>
 <script src="app.js"></script>
