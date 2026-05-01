@@ -67,26 +67,34 @@ const DELIVERY_CHARGE         = 15;
    DATA FETCHING
 ══════════════════════════════════════════════════════════ */
 async function fetchCategories() {
-  const { data, error } = await db.from("categories").select("*").order("name");
-  if (error) { console.error(error); return; }
-  allCategories = data || [];
-  renderCategoryTiles();
+  try {
+    const { data, error } = await db.from("categories").select("*").order("name");
+    if (error) { console.error(error); return; }
+    allCategories = data || [];
+    renderCategoryTiles();
+  } catch (err) {
+    console.error("fetchCategories failed:", err);
+  }
 }
 
 async function fetchProducts() {
   showProductsLoading();
-  const { data, error } = await db
-    .from("products")
-    .select("*, categories(name)")
-    .order("name");
-  if (error) {
-    console.error(error);
-    showProductsError(error.message);
-    return;
+  try {
+    const { data, error } = await db
+      .from("products")
+      .select("*, categories(name)")
+      .order("name");
+    if (error) {
+      showProductsError("Failed to load products: " + error.message);
+      return;
+    }
+    allProducts = data || [];
+    applyFilters();
+  } catch (err) {
+    showProductsError("Could not connect to server. Please check your internet and try again.");
+    console.error("fetchProducts failed:", err);
   }
-  allProducts = data || [];
-  applyFilters();
-}
+     }
 
 /* ══════════════════════════════════════════════════════════
    FILTERING
