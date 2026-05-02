@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Swift Store</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>"/>
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body class="admin-body">
+
+<!-- ════════════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════════════ -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🛒 Adarsh Admin</div>
+    <p class="login-sub">Sign in to manage your store</p>
+
+    <div class="form-group">
+      <label for="login-user">Username</label>
+      <input type="text" id="login-user" placeholder="admin" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label for="login-pass">Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="login-btn" id="login-btn">Login →</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     ADMIN PANEL  (hidden until logged in)
+════════════════════════════════════════════════════ -->
+<div id="admin-panel" style="display:none">
+
+  <!-- Navbar -->
+  <nav class="admin-nav navbar">
+    <div class="nav-inner">
+      <div class="nav-logo">⚙️ Adarsh <span>Admin</span></div>
+
+      <!-- Hamburger toggle -->
+      <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <!-- Nav links (hidden by default, shown via hamburger) -->
+      <div class="admin-nav-links" id="admin-nav-links">
+        <button class="admin-nav-link active" data-tab="add-product">➕ Add Product</button>
+        <button class="admin-nav-link" data-tab="products">📦 Products</button>
+        <button class="admin-nav-link" data-tab="categories">🗂 Categories</button>
+        <button class="admin-nav-link" data-tab="orders">
+          📋 Orders <span class="orders-badge" id="orders-badge" style="display:none"></span>
+        </button>
+        <button class="admin-nav-link" data-tab="coupons">🏷️ Coupons</button>
+        <a href="index.html" class="admin-nav-link" target="_blank">🔗 View Store</a>
+        <button class="admin-logout" id="logout-btn">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── ADD PRODUCT TAB ────────────────────────── -->
+  <div id="tab-add-product" class="admin-wrap admin-single-col">
+
+    <!-- Add / Edit Product Form (full width) -->
+    <div>
+      <div class="admin-card" style="max-width:600px;margin:0 auto">
+        <div class="admin-card-title" id="product-form-title">➕ Add Product</div>
+
+        <input type="hidden" id="edit-product-id"/>
+
+        <div class="form-group">
+          <label for="prod-name">Product Name *</label>
+          <input type="text" id="prod-name" placeholder="e.g. Basmati Rice 1kg"/>
+        </div>
+
+        <div class="form-group">
+          <label for="prod-desc">Description</label>
+          <textarea id="prod-desc" rows="2" placeholder="Short description…"></textarea>
+        </div>
+
+        <!-- MRP field -->
+        <div class="form-group">
+          <label for="prod-mrp">MRP (₹)</label>
+          <input type="number" id="prod-mrp" placeholder="199" min="0" step="0.01"/>
+          <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Original price before discount (shown with strikethrough)</small>
+        </div>
+
+        <!-- Selling / Base Price -->
+        <div class="form-group">
+          <label for="prod-price">Selling Price (₹) *</label>
+          <input type="number" id="prod-price" placeholder="149" min="0" step="0.01"/>
+          <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Discounted price the customer pays</small>
+        </div>
+
+        <div class="form-group">
+          <label for="prod-category">Category</label>
+          <select id="prod-category">
+            <option value="">— Select category —</option>
+          </select>
+        </div>
+
+        <!-- Image Upload -->
+        <div class="form-group">
+          <label for="prod-image">Product Image</label>
+          <input type="file" id="prod-image" accept="image/jpeg,image/png,image/webp,image/gif"/>
+          <div class="img-preview-wrap">
+            <img id="img-preview" class="img-preview" style="display:none" alt="Preview"/>
+          </div>
+          <!-- progress bar -->
+          <div class="upload-bar-wrap" id="upload-bar-wrap">
+            <div class="upload-bar" id="upload-bar"></div>
+          </div>
+          <input type="hidden" id="existing-image-url"/>
+          <small style="color:#9A9A9A;font-size:.75rem;margin-top:.25rem;display:block">
+            JPG / PNG / WebP · Max 5 MB · Stored in Cloudinary
+          </small>
+        </div>
+
+        <!-- Variants -->
+        <div class="variants-area">
+          <div class="variants-area-head">
+            <label>Variants (optional)</label>
+            <button class="add-variant-btn" id="add-variant-btn" type="button">+ Add</button>
+          </div>
+          <div id="variants-list"></div>
+          <small style="color:#9A9A9A;font-size:.75rem">e.g. Name: 500g · Price: 49</small>
+        </div>
+
+        <div style="display:flex;gap:.7rem;margin-top:.5rem">
+          <button class="btn btn-primary btn-full" id="save-product-btn">💾 Save Product</button>
+          <button class="btn btn-ghost" id="cancel-edit-btn" style="display:none">✕ Cancel</button>
+        </div>
+
+        <div class="form-status" id="product-form-status" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PRODUCTS LIST TAB ──────────────────────────────── -->
+  <div id="tab-products" class="admin-wrap admin-single-col" style="display:none">
+    <div>
+      <div class="admin-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.6rem">
+          <div class="admin-card-title" style="margin-bottom:0">📦 All Products</div>
+          <span class="count-badge" id="product-list-count">0</span>
+        </div>
+        <!-- Search bar -->
+        <div class="product-search-wrap">
+          <span class="product-search-icon">🔍</span>
+          <input type="text" id="product-search-input" class="product-search-input" placeholder="Search products by name…" autocomplete="off"/>
+        </div>
+        <div id="product-list-loading" class="spinner-wrap"><div class="spinner"></div></div>
+        <div id="product-list-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CATEGORIES TAB ────────────────────────────── -->
+  <div id="tab-categories" class="admin-wrap" style="display:none">
+
+    <!-- LEFT: Add / Edit Category -->
+    <div>
+      <div class="admin-card">
+        <div class="admin-card-title">🗂 Manage Categories</div>
+
+        <div class="form-group">
+          <label for="cat-name-input">Category Name *</label>
+          <input type="text" id="cat-name-input" placeholder="e.g. Dairy Products"/>
+        </div>
+
+        <!-- Category Image -->
+        <div class="form-group">
+          <label for="cat-image-input">Category Icon / Image</label>
+          <input type="file" id="cat-image-input" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"/>
+          <div class="img-preview-wrap">
+            <img id="cat-img-preview" class="img-preview" style="display:none" alt="Category preview"/>
+          </div>
+          <div class="upload-bar-wrap" id="cat-upload-bar-wrap">
+            <div class="upload-bar" id="cat-upload-bar"></div>
+          </div>
+          <small style="color:#9A9A9A;font-size:.75rem;margin-top:.25rem;display:block">
+            Shown as tile image in storefront · JPG/PNG/WebP/SVG · Max 2 MB
+          </small>
+        </div>
+
+        <div style="display:flex;gap:.7rem">
+          <button class="btn btn-primary btn-full" id="add-category-btn">➕ Add Category</button>
+          <button class="btn btn-ghost" id="cancel-cat-edit-btn" style="display:none">✕ Cancel</button>
+        </div>
+        <input type="hidden" id="edit-category-id"/>
+        <div class="form-status" id="category-form-status" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Category List -->
+    <div>
+      <div class="admin-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div class="admin-card-title" style="margin-bottom:0">📋 All Categories</div>
+          <span class="count-badge" id="category-list-count">0</span>
+        </div>
+        <div id="category-list-loading" class="spinner-wrap"><div class="spinner"></div></div>
+        <div id="category-list-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ORDERS TAB ─────────────────────────────────── -->
+  <div id="tab-orders" class="admin-wrap admin-orders-wrap" style="display:none">
+    <div style="grid-column:1/-1">
+      <div class="admin-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+          <div class="admin-card-title" style="margin-bottom:0">📋 Live Orders</div>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <span class="count-badge" id="order-list-count">0</span>
+            <button class="btn btn-ghost btn-sm" id="refresh-orders-btn">🔄 Refresh</button>
+          </div>
+        </div>
+        <p style="font-size:.8rem;color:var(--light);margin-bottom:1rem">
+          Orders are deleted immediately when marked as Delivered. No invoices are stored.
+        </p>
+        <div id="order-list-loading" class="spinner-wrap"><div class="spinner"></div></div>
+        <div id="order-list-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COUPONS TAB ─────────────────────────────────── -->
+  <div id="tab-coupons" class="admin-wrap" style="display:none">
+
+    <!-- LEFT: Add Coupon Form -->
+    <div>
+      <div class="admin-card">
+        <div class="admin-card-title">🏷️ Add Coupon</div>
+
+        <div class="form-group">
+          <label for="coupon-code-input">Coupon Code *</label>
+          <input type="text" id="coupon-code-input" placeholder="e.g. SAVE20" autocapitalize="characters" autocomplete="off"/>
+          <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Will be uppercased automatically</small>
+        </div>
+
+        <div class="form-group">
+          <label for="coupon-type-select">Discount Type *</label>
+          <select id="coupon-type-select">
+            <option value="percent">Percentage (%)</option>
+            <option value="flat">Flat Amount (₹)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="coupon-value-input">Discount Value *</label>
+          <input type="number" id="coupon-value-input" placeholder="e.g. 20 for 20% or ₹20" min="1" step="0.01"/>
+        </div>
+
+        <div class="form-group">
+          <label for="coupon-max-input">Max Discount (₹) <span style="color:var(--light);font-weight:400">(optional)</span></label>
+          <input type="number" id="coupon-max-input" placeholder="e.g. 100 — caps percent discount" min="0" step="1"/>
+          <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Only applies to percentage discounts</small>
+        </div>
+
+        <div class="form-group">
+          <label for="coupon-min-input">Min Order Value (₹) <span style="color:var(--light);font-weight:400">(optional)</span></label>
+          <input type="number" id="coupon-min-input" placeholder="e.g. 300" min="0" step="1"/>
+        </div>
+
+        <div class="form-group">
+          <label for="coupon-usage-limit-input">Usage Limit <span style="color:var(--light);font-weight:400">(optional)</span></label>
+          <input type="number" id="coupon-usage-limit-input" placeholder="e.g. 100 — max users who can use this coupon" min="1" step="1"/>
+          <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Leave blank for unlimited uses</small>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="save-coupon-btn">➕ Add Coupon</button>
+        <div class="form-status" id="coupon-form-status" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Coupon List -->
+    <div>
+      <div class="admin-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div class="admin-card-title" style="margin-bottom:0">🏷️ All Coupons</div>
+          <span class="count-badge" id="coupon-list-count">0</span>
+        </div>
+        <div id="coupon-list-loading" class="spinner-wrap" style="display:none"><div class="spinner"></div></div>
+        <div id="coupon-list-container"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end #admin-panel -->
+
+<!-- ════════════════════════════════════════════════════
+     CONFIRM MODAL  (reused for delete & delivered)
+════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="confirm-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box confirm-box">
+    <h2 id="confirm-title">⚠️ Confirm</h2>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirm-cancel-btn">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="admin-toast" role="status" aria-live="polite"></div>
+
+<script src="supabase.js"></script>
+<script src="cloudinary.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
