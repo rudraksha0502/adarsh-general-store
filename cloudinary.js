@@ -9,8 +9,8 @@
 // ─────────────────────────────────────────────────────────────
 
 // ✏️  Replace these two values with your own:
-const CLOUDINARY_CLOUD_NAME   = "YOUR_CLOUD_NAME";   // e.g. "dxyz12abc"
-const CLOUDINARY_UPLOAD_PRESET = "YOUR_UPLOAD_PRESET"; // e.g. "store_unsigned"
+const CLOUDINARY_CLOUD_NAME   = "dedzztfly";   // e.g. "dxyz12abc"
+const CLOUDINARY_UPLOAD_PRESET = "store_unsigned"; // e.g. "store_unsigned"
 
 /**
  * uploadToCloudinary
