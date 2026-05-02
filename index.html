@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Swift Store</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>"/>
+</head>
+<body>
+
+<!-- ════════ PULL-TO-REFRESH INDICATOR ════════ -->
+<div id="ptr-indicator" class="ptr-indicator" aria-hidden="true">
+  <div class="ptr-spinner"></div>
+  <span class="ptr-text">Pull down to refresh</span>
+</div>
+
+<!-- ════════ NAVBAR ════════ -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <!-- Categories hamburger — LEFT side -->
+    <button class="categories-nav-btn" id="categories-nav-btn" aria-label="Browse categories">
+  <span class="cat-icon">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/>
+    </svg>
+  </span>
+  <span class="cat-label">Categories</span>
+    </button>
+
+    <div class="nav-logo">🛒 Swift <span>Store</span></div>
+
+    <div class="nav-search">
+      <input
+        type="text"
+        id="search-input"
+        placeholder="Search products…"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        aria-label="Search products"
+        dir="ltr"
+      />
+      <span class="search-icon" aria-hidden="true">🔍</span>
+    </div>
+
+    <div class="nav-right">
+      <!-- My Orders button -->
+      <button class="my-orders-btn" id="my-orders-btn" aria-label="My Orders">
+        📋 <span class="my-orders-label">My Orders</span>
+      </button>
+      <button class="cart-btn" id="cart-open-btn" aria-label="Open cart">
+        🛒 Cart <span class="cart-badge" id="cart-count">0</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════ CATEGORIES MODAL ════════ -->
+<div class="cat-modal-overlay" id="cat-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Browse Categories">
+  <div class="cat-modal" id="cat-modal">
+    <div class="cat-modal-header">
+      <h2 class="cat-modal-title">🗂 Browse Categories</h2>
+      <button class="cat-modal-close" id="cat-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="cat-modal-body">
+      <!-- All Items tile -->
+      <div class="cat-tile active" data-id="all" id="cat-tile-all">
+        <div class="cat-tile-icon">🛒</div>
+        <div class="cat-tile-name">All Items</div>
+      </div>
+      <!-- Injected by JS -->
+      <div id="cat-tiles-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ HERO ════════ -->
+<section class="hero">
+  <div class="hero-content">
+    <h1>Swift Store</h1>
+    <p>Fresh groceries &amp; everyday essentials · Cash on Delivery · Free delivery above ₹500</p>
+    <!-- Active filter badge -->
+    <div class="active-filter-bar" id="active-filter-bar" style="display:none">
+      <span id="active-filter-label"></span>
+      <button class="clear-filter-btn" id="clear-filter-btn">✕ Clear</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ PRODUCTS ════════ -->
+<section class="products-section">
+  <div class="section-header">
+    <h2 class="section-title" id="section-title">All Products</h2>
+    <span class="product-count" id="product-count"></span>
+  </div>
+  <div id="products-container">
+    <div class="spinner-wrap"><div class="spinner"></div></div>
+  </div>
+</section>
+
+<!-- ════════ PRODUCT DETAIL MODAL ════════ -->
+<div class="modal-overlay" id="product-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box" id="product-modal-box">
+    <button class="modal-close" id="product-modal-close" aria-label="Close">✕</button>
+    <div id="product-modal-content"></div>
+  </div>
+</div>
+
+<!-- ════════ CART SIDEBAR ════════ -->
+<div class="cart-overlay" id="cart-overlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="cart-sidebar">
+    <div class="cart-head">
+      <h2>🛒 Your Cart</h2>
+      <button class="cart-head-close" id="cart-close-btn" aria-label="Close cart">✕</button>
+    </div>
+    <div class="cart-items" id="cart-items-container"></div>
+    <div class="cart-foot" id="cart-foot">
+      <div class="cart-total">Total: <strong id="cart-total-display">₹0</strong></div>
+      <button class="checkout-btn" id="open-checkout-btn">Proceed to Checkout →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CHECKOUT MODAL ════════ -->
+<div class="modal-overlay" id="checkout-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box checkout-box">
+    <button class="modal-close" id="checkout-modal-close" aria-label="Close">✕</button>
+    <h2 class="checkout-title">📦 Place Your Order</h2>
+    <p class="checkout-sub">Cash on Delivery · No payment needed now</p>
+
+    <div class="form-group">
+      <label for="c-name">Full Name *</label>
+      <input type="text" id="c-name" placeholder="Ramesh Kumar" autocomplete="name"/>
+    </div>
+    <div class="form-group">
+      <label for="c-phone">Phone Number *</label>
+      <input type="tel" id="c-phone" placeholder="9876543210" maxlength="10" autocomplete="tel"/>
+    </div>
+    <div class="form-group">
+      <label for="c-address">Delivery Address *</label>
+      <textarea id="c-address" rows="3" placeholder="House No., Street, Area, City, State" autocomplete="street-address"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="c-pincode">Pincode *</label>
+      <input type="text" id="c-pincode" placeholder="110001" maxlength="6" inputmode="numeric"/>
+    </div>
+
+    <div class="coupon-row" id="coupon-row">
+      <div class="coupon-input-wrap">
+        <input type="text" id="c-coupon" placeholder="Enter coupon code (optional)" autocomplete="off" autocapitalize="characters" spellcheck="false"/>
+        <button class="coupon-apply-btn" id="coupon-apply-btn">Apply</button>
+      </div>
+      <div class="coupon-status" id="coupon-status"></div>
+    </div>
+
+    <div class="order-summary">
+      <h3>Order Summary</h3>
+      <div id="checkout-item-lines"></div>
+      <div class="order-total-line">Grand Total: <strong id="checkout-grand-total">₹0</strong></div>
+    </div>
+
+    <button class="place-order-btn" id="place-order-btn">✅ Place Order (Cash on Delivery)</button>
+    <div class="order-status" id="order-status-msg"></div>
+  </div>
+</div>
+
+<!-- ════════ MY ORDERS MODAL ════════ -->
+<div class="modal-overlay" id="my-orders-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box my-orders-box">
+    <button class="modal-close" id="my-orders-modal-close" aria-label="Close">✕</button>
+    <h2 class="checkout-title">📋 My Orders</h2>
+    <p class="checkout-sub">Orders placed from this device</p>
+    <div id="my-orders-list"></div>
+  </div>
+</div>
+
+<!-- ════════ TOAST ════════ -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ════════ FOOTER ════════ -->
+<footer class="footer">
+  <p>© 2025 <strong>Swift Store</strong> · Cash on Delivery only · All rights reserved</p>
+</footer>
+
+<!-- Scripts — all at bottom so page renders immediately, loaded in dependency order -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="supabase.js"></script>
+<script src="telegram.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
