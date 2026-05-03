@@ -225,6 +225,35 @@ input, textarea, select { font-family: inherit; }
 }
 .cat-modal-close:hover { background: var(--crimson); color: var(--white); }
 
+/* ── Category search bar ───────────────────────────────── */
+.cat-search-wrap {
+  position: sticky; top: 62px; z-index: 1;
+  background: var(--white);
+  padding: .65rem 1.2rem .55rem;
+  border-bottom: 1.5px solid var(--border);
+  display: flex; align-items: center; gap: .5rem;
+}
+.cat-search-input {
+  flex: 1;
+  padding: .52rem .9rem .52rem 2.4rem;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  font-size: .9rem;
+  background: var(--cream);
+  color: var(--dark);
+  transition: border-color .18s;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: .8rem center;
+}
+.cat-search-input:focus { border-color: var(--teal); background-color: var(--white); }
+.cat-search-icon { display: none; } /* icon embedded as bg-image above */
+.cat-search-no-results {
+  padding: 1.5rem; text-align: center;
+  color: var(--mid); font-size: .9rem; line-height: 1.6;
+}
+
 .cat-modal-body {
   display: flex;
   flex-direction: column;
@@ -441,6 +470,11 @@ input, textarea, select { font-family: inherit; }
   width: 100%; height: 160px;
   object-fit: cover;
   background: var(--cream-dk);
+  /* GPU-composited layer avoids repaints during scroll */
+  will-change: transform;
+  /* Reserve space before image loads (prevents layout shift) */
+  aspect-ratio: 1 / 1;
+  contain: strict;
 }
 .product-card-img-placeholder {
   width: 100%; height: 160px;
@@ -563,6 +597,48 @@ input, textarea, select { font-family: inherit; }
   position: relative;
   animation: slideUp .22s ease;
 }
+/* Product detail modal on desktop: two-column so image never crops */
+@media (min-width: 769px) {
+  .modal-box.product-detail-box {
+    max-width: 820px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 0 1.8rem;
+    align-items: start;
+    padding: 2rem;
+  }
+  .modal-box.product-detail-box .modal-close {
+    grid-column: 1 / -1;
+    justify-self: end;
+    position: static;
+    margin-bottom: .5rem;
+  }
+  .modal-box.product-detail-box .modal-prod-img,
+  .modal-box.product-detail-box .modal-prod-img-placeholder {
+    grid-column: 1;
+    grid-row: 2 / 10;
+    height: auto;
+    max-height: 420px;
+    width: 100%;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    background: var(--cream-dk);
+  }
+  .modal-box.product-detail-box .modal-prod-img-placeholder {
+    min-height: 260px;
+  }
+  /* All detail content goes in col 2 */
+  .modal-box.product-detail-box .modal-prod-category,
+  .modal-box.product-detail-box .modal-prod-name,
+  .modal-box.product-detail-box .modal-prod-desc,
+  .modal-box.product-detail-box .modal-prod-price,
+  .modal-box.product-detail-box .modal-savings-badge,
+  .modal-box.product-detail-box .variant-label,
+  .modal-box.product-detail-box .variant-chips,
+  .modal-box.product-detail-box .add-cart-btn {
+    grid-column: 2;
+  }
+}
 @keyframes slideUp {
   from { transform: translateY(28px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
@@ -578,7 +654,9 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Product detail modal ──────────────────────────────── */
 .modal-prod-img {
-  width: 100%; height: 230px; object-fit: cover;
+  width: 100%;
+  height: 240px;
+  object-fit: contain;       /* changed from cover → contain so image is never cropped */
   border-radius: var(--radius-sm); margin-bottom: 1.1rem;
   background: var(--cream-dk);
 }

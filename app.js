@@ -87,9 +87,10 @@ async function fetchCategories() {
 async function fetchProducts() {
   showProductsLoading();
   try {
+    // Fetch only the columns the storefront actually needs (speeds up large catalogs)
     const { data, error } = await db
       .from("products")
-      .select("*, categories(name)")
+      .select("id, name, description, imageurl, baseprice, mrp, variants, category_id, out_of_stock, categories(name)")
       .order("name");
     if (error) {
       console.error("fetchProducts error:", error);
@@ -109,7 +110,9 @@ async function refreshData() {
   try {
     const [catRes, prodRes] = await Promise.all([
       db.from("categories").select("*").order("name"),
-      db.from("products").select("*, categories(name)").order("name")
+      db.from("products")
+        .select("id, name, description, imageurl, baseprice, mrp, variants, category_id, out_of_stock, categories(name)")
+        .order("name")
     ]);
     if (!catRes.error)  { allCategories = catRes.data  || []; renderCategoryTiles(); }
     if (!prodRes.error) { allProducts   = prodRes.data || []; applyFilters(); }
@@ -296,10 +299,10 @@ function applyFilters() {
   }
   if (searchQuery.trim()) {
     const q = searchQuery.trim().toLowerCase();
-    list = list.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.description || "").toLowerCase().includes(q)
-    );
+    // Homepage search: return only products whose NAME matches.
+    // Description is intentionally excluded from the result filter so the
+    // product list stays clean and name-focused.
+    list = list.filter(p => p.name.toLowerCase().includes(q));
   }
 
   const catName = activeCatId === "all"
@@ -335,56 +338,104 @@ function applyFilters() {
    CATEGORY MODAL — grouped tiles, fully dynamic from DB
    No hardcoded keywords or emoji mappings.
 ══════════════════════════════════════════════════════════ */
-function renderCategoryTiles() {
+/* ── Helper: extract leading number from a string ───────
+   "3. Dairy" → 3,  "10 Snacks" → 10,  "Beverages" → Infinity
+──────────────────────────────────────────────────────── */
+function _numericPrefix(name) {
+  const m = (name || "").match(/^(\d+)/);
+  return m ? parseInt(m[1], 10) : Infinity;
+}
+
+/* ── Build tile HTML (shared by full render & search) ── */
+function _catTileHtml(cat) {
+  const tileIcon = cat.emoji
+    ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
+    : cat.image_url
+      ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
+      : `<div class="cat-tile-emoji">📦</div>`;
+  return `
+    <div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">
+      ${tileIcon}
+      <div class="cat-tile-name">${escHtml(cat.name)}</div>
+    </div>`;
+}
+
+function renderCategoryTiles(catSearchQuery) {
   const container = document.getElementById("cat-tiles-container");
   if (!container) return;
 
-  const headers = allCategories.filter(c => !c.parent_id);
-  const subs    = allCategories.filter(c =>  c.parent_id);
+  const q = (catSearchQuery || "").trim().toLowerCase();
+
+  // Sort parent headers by numeric prefix ascending
+  const headers = allCategories
+    .filter(c => !c.parent_id)
+    .sort((a, b) => _numericPrefix(a.name) - _numericPrefix(b.name));
+  const subs = allCategories.filter(c => c.parent_id);
+
+  // All Items tile visibility
+  const allTile = document.getElementById("cat-tile-all");
 
   let html = "";
 
-  headers.forEach(header => {
-    const children = subs.filter(s => s.parent_id === header.id);
-    if (!children.length) return;
-    const headerIcon = header.emoji || "🏪";
-    html += `
-      <div class="cat-group-section">
-        <div class="cat-group-heading">${headerIcon} ${escHtml(header.name)}</div>
+  if (q) {
+    /* ── SEARCH MODE ───────────────────────────────────────
+       Show a flat list of sub-categories whose name matches
+       OR that contain a product whose name matches the query.
+    ──────────────────────────────────────────────────────── */
+    // Build a set of category IDs that contain a matching product
+    const catIdsWithMatchingProduct = new Set(
+      allProducts
+        .filter(p => p.name.toLowerCase().includes(q))
+        .map(p => p.category_id)
+        .filter(Boolean)
+    );
+
+    const matchingSubs = subs.filter(cat =>
+      cat.name.toLowerCase().includes(q) ||
+      catIdsWithMatchingProduct.has(cat.id)
+    );
+
+    if (allTile) allTile.style.display = "none";
+
+    if (matchingSubs.length) {
+      html += `<div class="cat-group-section cat-search-results">
+        <div class="cat-group-heading">🔍 Search Results</div>
         <div class="cat-group-tiles">
-          ${children.map(cat => {
-            const tileIcon = cat.emoji
-              ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
-              : cat.image_url
-                ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
-                : `<div class="cat-tile-emoji">📦</div>`;
-            return `
-              <div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">
-                ${tileIcon}
-                <div class="cat-tile-name">${escHtml(cat.name)}</div>
-              </div>`;
-          }).join("")}
+          ${matchingSubs.map(_catTileHtml).join("")}
         </div>
       </div>`;
-  });
+    } else {
+      html = `<div class="cat-search-no-results">No categories or products found for "<strong>${escHtml(catSearchQuery.trim())}</strong>".</div>`;
+    }
 
-  // Orphan subs whose header was deleted
-  const orphans = subs.filter(s => !headers.find(h => h.id === s.parent_id));
-  if (orphans.length) {
-    html += `<div class="cat-group-section"><div class="cat-group-heading">🏪 Other</div><div class="cat-group-tiles">`;
-    orphans.forEach(cat => {
-      const tileIcon = cat.emoji
-        ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
-        : cat.image_url
-          ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
-          : `<div class="cat-tile-emoji">📦</div>`;
-      html += `<div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">${tileIcon}<div class="cat-tile-name">${escHtml(cat.name)}</div></div>`;
+  } else {
+    /* ── NORMAL MODE — sorted headers ────────────────────── */
+    if (allTile) allTile.style.display = "";
+
+    headers.forEach(header => {
+      const children = subs.filter(s => s.parent_id === header.id);
+      if (!children.length) return;
+      const headerIcon = header.emoji || "🏪";
+      html += `
+        <div class="cat-group-section">
+          <div class="cat-group-heading">${headerIcon} ${escHtml(header.name)}</div>
+          <div class="cat-group-tiles">
+            ${children.map(_catTileHtml).join("")}
+          </div>
+        </div>`;
     });
-    html += `</div></div>`;
-  }
 
-  if (!html) {
-    html = `<div style="padding:1.5rem;text-align:center;color:var(--light)">No categories yet.</div>`;
+    // Orphan subs whose parent was deleted
+    const orphans = subs.filter(s => !headers.find(h => h.id === s.parent_id));
+    if (orphans.length) {
+      html += `<div class="cat-group-section"><div class="cat-group-heading">🏪 Other</div><div class="cat-group-tiles">`;
+      orphans.forEach(cat => { html += _catTileHtml(cat); });
+      html += `</div></div>`;
+    }
+
+    if (!html) {
+      html = `<div style="padding:1.5rem;text-align:center;color:var(--light)">No categories yet.</div>`;
+    }
   }
 
   container.innerHTML = html;
@@ -393,7 +444,6 @@ function renderCategoryTiles() {
     tile.addEventListener("click", () => selectCategoryAndClose(tile.dataset.id));
   });
 
-  const allTile = document.getElementById("cat-tile-all");
   if (allTile) allTile.onclick = () => selectCategoryAndClose("all");
 
   updateCategoryTileActive();
@@ -410,6 +460,13 @@ function openCategoryModal() {
   const overlay = document.getElementById("cat-modal-overlay");
   overlay.style.display = "flex";
   document.body.style.overflow = "hidden";
+  // Clear and focus category search on open
+  const catSearch = document.getElementById("cat-search-input");
+  if (catSearch) {
+    catSearch.value = "";
+    renderCategoryTiles(""); // reset to full list
+    setTimeout(() => catSearch.focus(), 120);
+  }
 }
 
 function closeCategoryModal() {
@@ -450,6 +507,9 @@ function renderProductGrid(products) {
   const grid = document.createElement("div");
   grid.className = "product-grid";
 
+  // Use a DocumentFragment so cards are built off-screen and appended in one hit
+  const frag = document.createDocumentFragment();
+
   products.forEach(p => {
     try {
       const variants     = parseVariants(p.variants);
@@ -467,8 +527,7 @@ function renderProductGrid(products) {
       const discountPercent = mrpPrice
         ? Math.round(((mrpPrice - sellingPrice) / mrpPrice) * 100)
         : 0;
-      const catName = p.categories?.name || "";
-      const isOOS   = p.out_of_stock === true;
+      const isOOS = p.out_of_stock === true;
 
       const card = document.createElement("div");
       card.className = "product-card product-card-compact";
@@ -477,7 +536,7 @@ function renderProductGrid(products) {
       card.setAttribute("aria-label", `View ${p.name}`);
 
       const imgHtml = p.imageurl
-        ? `<img class="product-card-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}" loading="lazy"/>`
+        ? `<img class="product-card-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}" loading="lazy" decoding="async"/>`
         : `<div class="product-card-img-placeholder">📦</div>`;
 
       card.innerHTML = `
@@ -503,12 +562,13 @@ function renderProductGrid(products) {
         });
       }
 
-      grid.appendChild(card);
+      frag.appendChild(card);
     } catch (cardErr) {
       console.error("Error rendering product card:", p?.name || p?.id, cardErr);
     }
   });
 
+  grid.appendChild(frag);  // single DOM insertion
   container.innerHTML = "";
   container.appendChild(grid);
 }
@@ -523,6 +583,9 @@ function openProductModal(product) {
   modalVariant   = variants.length ? variants[0] : null;
   renderProductModal();
   document.getElementById("product-modal").style.display = "flex";
+  // Apply two-column desktop class
+  const box = document.getElementById("product-modal-box");
+  if (box) box.classList.add("product-detail-box");
   document.body.style.overflow = "hidden";
 }
 
@@ -1069,6 +1132,19 @@ function wireEvents() {
   if (catOverlay) {
     catOverlay.addEventListener("click", e => {
       if (e.target === catOverlay) closeCategoryModal();
+    });
+  }
+
+  // Category search input — debounced
+  const catSearchInput = document.getElementById("cat-search-input");
+  if (catSearchInput) {
+    let _catSearchTimer = null;
+    catSearchInput.addEventListener("input", function () {
+      clearTimeout(_catSearchTimer);
+      _catSearchTimer = setTimeout(() => renderCategoryTiles(this.value), 180);
+    });
+    catSearchInput.addEventListener("keydown", e => {
+      if (e.key === "Escape") { catSearchInput.value = ""; renderCategoryTiles(""); }
     });
   }
 
