@@ -456,18 +456,33 @@ function resetSubForm() {
 
 async function deleteCategory(catId, catName, isHeader) {
   const msg = isHeader
-    ? `Delete header "${catName}"? All its sub-categories will also be deleted!`
+    ? `Delete header "${catName}"? All its sub-categories will also be deleted, and products will lose their category.`
     : `Delete sub-category "${catName}"? Products in it will lose their category.`;
   openConfirm(msg, async () => {
     let error;
+
     if (isHeader) {
-      // Delete all subs first
       const subIds = allSubs.filter(s => s.parent_id === catId).map(s => s.id);
+      // 1. Nullify category_id on products in any sub
+      if (subIds.length) {
+        ({ error } = await db.from("products").update({ category_id: null }).in("category_id", subIds));
+        if (error) { closeConfirm(); showToast(`❌ ${error.message}`); return; }
+      }
+      // 2. Nullify category_id on products directly on the header
+      ({ error } = await db.from("products").update({ category_id: null }).eq("category_id", catId));
+      if (error) { closeConfirm(); showToast(`❌ ${error.message}`); return; }
+      // 3. Delete sub-categories
       if (subIds.length) {
         ({ error } = await db.from("categories").delete().in("id", subIds));
         if (error) { closeConfirm(); showToast(`❌ ${error.message}`); return; }
       }
+    } else {
+      // Nullify products in this sub first
+      ({ error } = await db.from("products").update({ category_id: null }).eq("category_id", catId));
+      if (error) { closeConfirm(); showToast(`❌ ${error.message}`); return; }
     }
+
+    // Delete the category itself
     ({ error } = await db.from("categories").delete().eq("id", catId));
     closeConfirm();
     if (error) { showToast(`❌ ${error.message}`); return; }

@@ -331,95 +331,60 @@ function applyFilters() {
 }
 
 /* ── Category Section Groups (BigBasket-style) ─────────── */
-/* ── Dynamic grouping uses parent_id from DB — no hardcoded groups needed ── */
-
-function getCatGroup(cat) {
-  // Use parent_id if available (new two-tier system)
-  if (cat.parent_id) {
-    const parent = allCategories.find(c => c.id === cat.parent_id);
-    if (parent) {
-      const icon = parent.emoji || "🏪";
-      return `${icon} ${parent.name}`;
-    }
-  }
-  // Fallback: treat the category itself as a group (old flat system or headers)
-  return "🏪 Other";
-}
-
 /* ══════════════════════════════════════════════════════════
-   CATEGORY MODAL (BigBasket-style grouped tiles)
+   CATEGORY MODAL — grouped tiles, fully dynamic from DB
+   No hardcoded keywords or emoji mappings.
 ══════════════════════════════════════════════════════════ */
 function renderCategoryTiles() {
   const container = document.getElementById("cat-tiles-container");
   if (!container) return;
 
-  // Separate headers and subs
   const headers = allCategories.filter(c => !c.parent_id);
   const subs    = allCategories.filter(c =>  c.parent_id);
 
   let html = "";
 
-  if (headers.length > 0) {
-    // New two-tier: group subs under their header
-    headers.forEach(header => {
-      const children = subs.filter(s => s.parent_id === header.id);
-      if (!children.length) return; // skip headers with no subs
-      const headerIcon = header.emoji || "🏪";
-      html += `
-        <div class="cat-group-section">
-          <div class="cat-group-heading">${headerIcon} ${escHtml(header.name)}</div>
-          <div class="cat-group-tiles">
-            ${children.map(cat => {
-              const tileIcon = cat.emoji
-                ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
-                : cat.image_url
-                  ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
-                  : `<div class="cat-tile-emoji">${getCatEmoji(cat.name)}</div>`;
-              return `
-                <div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">
-                  ${tileIcon}
-                  <div class="cat-tile-name">${escHtml(cat.name)}</div>
-                </div>`;
-            }).join("")}
-          </div>
-        </div>`;
-    });
+  headers.forEach(header => {
+    const children = subs.filter(s => s.parent_id === header.id);
+    if (!children.length) return;
+    const headerIcon = header.emoji || "🏪";
+    html += `
+      <div class="cat-group-section">
+        <div class="cat-group-heading">${headerIcon} ${escHtml(header.name)}</div>
+        <div class="cat-group-tiles">
+          ${children.map(cat => {
+            const tileIcon = cat.emoji
+              ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
+              : cat.image_url
+                ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
+                : `<div class="cat-tile-emoji">📦</div>`;
+            return `
+              <div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">
+                ${tileIcon}
+                <div class="cat-tile-name">${escHtml(cat.name)}</div>
+              </div>`;
+          }).join("")}
+        </div>
+      </div>`;
+  });
 
-    // Orphan subs (no matching header) — fallback
-    const orphans = subs.filter(s => !headers.find(h => h.id === s.parent_id));
-    if (orphans.length) {
-      html += `<div class="cat-group-section"><div class="cat-group-heading">🏪 Other</div><div class="cat-group-tiles">`;
-      orphans.forEach(cat => {
-        const tileIcon = cat.emoji
-          ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
-          : cat.image_url
-            ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
-            : `<div class="cat-tile-emoji">${getCatEmoji(cat.name)}</div>`;
-        html += `<div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">${tileIcon}<div class="cat-tile-name">${escHtml(cat.name)}</div></div>`;
-      });
-      html += `</div></div>`;
-    }
-
-  } else {
-    // Legacy flat mode: no parent_id system yet, show all as one group
-    const grouped = {};
-    allCategories.forEach(cat => {
-      const grp = getCatGroup(cat);
-      if (!grouped[grp]) grouped[grp] = [];
-      grouped[grp].push(cat);
+  // Orphan subs whose header was deleted
+  const orphans = subs.filter(s => !headers.find(h => h.id === s.parent_id));
+  if (orphans.length) {
+    html += `<div class="cat-group-section"><div class="cat-group-heading">🏪 Other</div><div class="cat-group-tiles">`;
+    orphans.forEach(cat => {
+      const tileIcon = cat.emoji
+        ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
+        : cat.image_url
+          ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
+          : `<div class="cat-tile-emoji">📦</div>`;
+      html += `<div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">${tileIcon}<div class="cat-tile-name">${escHtml(cat.name)}</div></div>`;
     });
-    for (const [groupLabel, cats] of Object.entries(grouped)) {
-      html += `<div class="cat-group-section"><div class="cat-group-heading">${groupLabel}</div><div class="cat-group-tiles">`;
-      cats.forEach(cat => {
-        const tileIcon = cat.emoji
-          ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
-          : cat.image_url
-            ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
-            : `<div class="cat-tile-emoji">${getCatEmoji(cat.name)}</div>`;
-        html += `<div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">${tileIcon}<div class="cat-tile-name">${escHtml(cat.name)}</div></div>`;
-      });
-      html += `</div></div>`;
-    }
+    html += `</div></div>`;
+  }
+
+  if (!html) {
+    html = `<div style="padding:1.5rem;text-align:center;color:var(--light)">No categories yet.</div>`;
   }
 
   container.innerHTML = html;
@@ -432,59 +397,6 @@ function renderCategoryTiles() {
   if (allTile) allTile.onclick = () => selectCategoryAndClose("all");
 
   updateCategoryTileActive();
-}
-
-function getCatEmoji(name) {
-  const n = (name || "").toLowerCase();
-  if (n.includes("cooking essential"))            return "🍳";
-  if (n.includes("dal") || n.includes("pulse"))   return "🫘";
-  if (n.includes("atta") || n.includes("flour"))  return "🌾";
-  if (n.includes("rice"))                          return "🍚";
-  if (n.includes("ghee") || n.includes("oil"))    return "🫙";
-  if (n.includes("dry fruit"))                     return "🥜";
-  if (n.includes("sugar") || n.includes("salt"))  return "🧂";
-  if (n.includes("masala") || n.includes("spice")) return "🌶";
-  if (n.includes("biscuit") || n.includes("cookie")) return "🍪";
-  if (n.includes("chip") || n.includes("namkeen"))    return "🍟";
-  if (n.includes("snack"))                             return "🍿";
-  if (n.includes("noodle") || n.includes("pasta"))    return "🍜";
-  if (n.includes("ketchup") || n.includes("dip") || n.includes("spread")) return "🥫";
-  if (n.includes("chocolate") || n.includes("sweet") || n.includes("confect")) return "🍫";
-  if (n.includes("jam") || n.includes("honey"))       return "🍯";
-  if (n.includes("pickle") || n.includes("chutney"))  return "🫙";
-  if (n.includes("ready to cook") || n.includes("instant food")) return "🥡";
-  if (n.includes("baking"))                           return "🎂";
-  if (n.includes("packaged food") || n.includes("breakfast")) return "🥣";
-  if (n.includes("tea"))                              return "🍵";
-  if (n.includes("coffee"))                           return "☕";
-  if (n.includes("juice") || n.includes("fruit drink")) return "🧃";
-  if (n.includes("soft drink") || n.includes("soda")) return "🥤";
-  if (n.includes("health drink"))                     return "💪";
-  if (n.includes("instant drink"))                    return "🫖";
-  if (n.includes("drink") || n.includes("bever"))     return "🧃";
-  if (n.includes("detergent") || n.includes("laundry")) return "🫧";
-  if (n.includes("toilet") || n.includes("floor clean")) return "🪣";
-  if (n.includes("dishwash"))                         return "🍽️";
-  if (n.includes("household") || n.includes("clean")) return "🧹";
-  if (n.includes("diaper"))                           return "👶";
-  if (n.includes("baby food"))                        return "🍼";
-  if (n.includes("baby skin") || n.includes("baby care")) return "🧸";
-  if (n.includes("soap") || n.includes("bodywash") || n.includes("body wash")) return "🧼";
-  if (n.includes("hair"))                             return "💇";
-  if (n.includes("oral") || n.includes("tooth"))      return "🦷";
-  if (n.includes("fragrance") || n.includes("talc") || n.includes("deo")) return "🌸";
-  if (n.includes("skin"))                             return "🧴";
-  if (n.includes("shav"))                             return "🪒";
-  if (n.includes("intimate"))                         return "🌿";
-  if (n.includes("personal") || n.includes("baby"))  return "🛁";
-  if (n.includes("wellness") || n.includes("pharma") || n.includes("health")) return "💊";
-  if (n.includes("dairy") || n.includes("milk"))      return "🥛";
-  if (n.includes("fruit") || n.includes("veg"))       return "🥬";
-  if (n.includes("grain"))                             return "🌾";
-  if (n.includes("bread") || n.includes("bake"))      return "🍞";
-  if (n.includes("meat") || n.includes("chicken") || n.includes("fish")) return "🍗";
-  if (n.includes("frozen"))                            return "🧊";
-  return "📦";
 }
 
 function updateCategoryTileActive() {
@@ -566,7 +478,7 @@ function renderProductGrid(products) {
 
       const imgHtml = p.imageurl
         ? `<img class="product-card-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}" loading="lazy"/>`
-        : `<div class="product-card-img-placeholder">${getCatEmoji(catName)}</div>`;
+        : `<div class="product-card-img-placeholder">📦</div>`;
 
       card.innerHTML = `
         ${imgHtml}
@@ -627,7 +539,7 @@ function renderProductModal() {
 
   const imgHtml = p.imageurl
     ? `<img class="modal-prod-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}"/>`
-    : `<div class="modal-prod-img-placeholder">${getCatEmoji(catName)}</div>`;
+    : `<div class="modal-prod-img-placeholder">📦</div>`;
 
   let variantsHtml = "";
   if (variants.length) {
