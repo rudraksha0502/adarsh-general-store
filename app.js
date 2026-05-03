@@ -331,42 +331,18 @@ function applyFilters() {
 }
 
 /* ── Category Section Groups (BigBasket-style) ─────────── */
-const CAT_GROUPS = [
-  {
-    label: "🍳 Cooking Essentials",
-    keywords: ["cooking essential","dal","pulse","atta","flour","rice","ghee","oil","dry fruit","sugar","salt","masala","spice","grain"]
-  },
-  {
-    label: "🥤 Beverages",
-    keywords: ["tea","coffee","juice","fruit drink","soft drink","soda","health drink","instant drink","drink","bever"]
-  },
-  {
-    label: "🍟 Snacks & Packaged Food",
-    keywords: ["biscuit","cookie","chip","namkeen","snack","noodle","pasta","ketchup","dip","spread","chocolate","sweet","confect","jam","honey","pickle","chutney","ready to cook","instant food","baking","packaged food","breakfast","bread","bake","frozen"]
-  },
-  {
-    label: "🧹 Household Care",
-    keywords: ["detergent","laundry","toilet","floor clean","dishwash","household","clean"]
-  },
-  {
-    label: "🛁 Personal & Baby Care",
-    keywords: ["diaper","baby food","baby skin","baby care","soap","bodywash","body wash","hair","oral","tooth","fragrance","talc","deo","skin","shav","intimate","personal","baby"]
-  },
-  {
-    label: "💊 Wellness & Pharma",
-    keywords: ["wellness","pharma","health"]
-  },
-  {
-    label: "🥛 Fresh & Dairy",
-    keywords: ["dairy","milk","fruit","veg","meat","chicken","fish"]
-  }
-];
+/* ── Dynamic grouping uses parent_id from DB — no hardcoded groups needed ── */
 
-function getCatGroup(catName) {
-  const n = (catName || "").toLowerCase();
-  for (const group of CAT_GROUPS) {
-    if (group.keywords.some(k => n.includes(k))) return group.label;
+function getCatGroup(cat) {
+  // Use parent_id if available (new two-tier system)
+  if (cat.parent_id) {
+    const parent = allCategories.find(c => c.id === cat.parent_id);
+    if (parent) {
+      const icon = parent.emoji || "🏪";
+      return `${icon} ${parent.name}`;
+    }
   }
+  // Fallback: treat the category itself as a group (old flat system or headers)
   return "🏪 Other";
 }
 
@@ -377,32 +353,75 @@ function renderCategoryTiles() {
   const container = document.getElementById("cat-tiles-container");
   if (!container) return;
 
-  const grouped = {};
-  allCategories.forEach(cat => {
-    const grp = getCatGroup(cat.name);
-    if (!grouped[grp]) grouped[grp] = [];
-    grouped[grp].push(cat);
-  });
+  // Separate headers and subs
+  const headers = allCategories.filter(c => !c.parent_id);
+  const subs    = allCategories.filter(c =>  c.parent_id);
 
   let html = "";
-  for (const [groupLabel, cats] of Object.entries(grouped)) {
-    html += `
-      <div class="cat-group-section">
-        <div class="cat-group-heading">${groupLabel}</div>
-        <div class="cat-group-tiles">
-          ${cats.map(cat => {
-            const imgHtml = cat.image_url
-              ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
-              : `<div class="cat-tile-emoji">${getCatEmoji(cat.name)}</div>`;
-            return `
-              <div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">
-                ${imgHtml}
-                <div class="cat-tile-name">${escHtml(cat.name)}</div>
-              </div>`;
-          }).join("")}
-        </div>
-      </div>`;
+
+  if (headers.length > 0) {
+    // New two-tier: group subs under their header
+    headers.forEach(header => {
+      const children = subs.filter(s => s.parent_id === header.id);
+      if (!children.length) return; // skip headers with no subs
+      const headerIcon = header.emoji || "🏪";
+      html += `
+        <div class="cat-group-section">
+          <div class="cat-group-heading">${headerIcon} ${escHtml(header.name)}</div>
+          <div class="cat-group-tiles">
+            ${children.map(cat => {
+              const tileIcon = cat.emoji
+                ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
+                : cat.image_url
+                  ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
+                  : `<div class="cat-tile-emoji">${getCatEmoji(cat.name)}</div>`;
+              return `
+                <div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">
+                  ${tileIcon}
+                  <div class="cat-tile-name">${escHtml(cat.name)}</div>
+                </div>`;
+            }).join("")}
+          </div>
+        </div>`;
+    });
+
+    // Orphan subs (no matching header) — fallback
+    const orphans = subs.filter(s => !headers.find(h => h.id === s.parent_id));
+    if (orphans.length) {
+      html += `<div class="cat-group-section"><div class="cat-group-heading">🏪 Other</div><div class="cat-group-tiles">`;
+      orphans.forEach(cat => {
+        const tileIcon = cat.emoji
+          ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
+          : cat.image_url
+            ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
+            : `<div class="cat-tile-emoji">${getCatEmoji(cat.name)}</div>`;
+        html += `<div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">${tileIcon}<div class="cat-tile-name">${escHtml(cat.name)}</div></div>`;
+      });
+      html += `</div></div>`;
+    }
+
+  } else {
+    // Legacy flat mode: no parent_id system yet, show all as one group
+    const grouped = {};
+    allCategories.forEach(cat => {
+      const grp = getCatGroup(cat);
+      if (!grouped[grp]) grouped[grp] = [];
+      grouped[grp].push(cat);
+    });
+    for (const [groupLabel, cats] of Object.entries(grouped)) {
+      html += `<div class="cat-group-section"><div class="cat-group-heading">${groupLabel}</div><div class="cat-group-tiles">`;
+      cats.forEach(cat => {
+        const tileIcon = cat.emoji
+          ? `<div class="cat-tile-emoji">${escHtml(cat.emoji)}</div>`
+          : cat.image_url
+            ? `<img class="cat-tile-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
+            : `<div class="cat-tile-emoji">${getCatEmoji(cat.name)}</div>`;
+        html += `<div class="cat-tile" data-id="${escHtml(cat.id)}" id="cat-tile-${escHtml(cat.id)}">${tileIcon}<div class="cat-tile-name">${escHtml(cat.name)}</div></div>`;
+      });
+      html += `</div></div>`;
+    }
   }
+
   container.innerHTML = html;
 
   container.querySelectorAll(".cat-tile").forEach(tile => {

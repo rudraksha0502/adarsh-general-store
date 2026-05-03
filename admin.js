@@ -16,11 +16,14 @@ const ADMIN_PASS    = "adarsh@2025";
 // BUCKET / CAT_BUCKET constants removed — no longer using Supabase Storage
 
 /* ── State ───────────────────────────────────────────── */
-let allCategories  = [];
+let allCategories  = [];   // all rows (headers + subs)
+let allHeaders     = [];   // parent_id IS NULL
+let allSubs        = [];   // parent_id IS NOT NULL
 let allProducts    = [];
 let allOrders      = [];
 let variantCount   = 0;
 let deleteCallback = null;
+let currentCatMode = "header"; // "header" | "sub"
 
 /* ═══════════════════════════════════════════════════════════
    LOGIN
@@ -132,7 +135,7 @@ function closeConfirm() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CATEGORIES — FETCH & RENDER
+   CATEGORIES — FETCH & RENDER (two-tier: headers + subs)
 ═══════════════════════════════════════════════════════════ */
 async function fetchCategories() {
   document.getElementById("category-list-loading").style.display = "flex";
@@ -147,142 +150,335 @@ async function fetchCategories() {
     return;
   }
   allCategories = data || [];
+  allHeaders    = allCategories.filter(c => !c.parent_id);
+  allSubs       = allCategories.filter(c =>  c.parent_id);
+
   document.getElementById("category-list-count").textContent = allCategories.length;
   renderCategoryList();
   populateCategoryDropdown();
+  populateParentDropdown();
+}
+
+function catIconHtml(cat, size = "admin") {
+  if (cat.emoji) {
+    return `<div class="${size === "admin" ? "admin-cat-emoji-ph" : "admin-cat-img-ph"}">${escHtml(cat.emoji)}</div>`;
+  }
+  if (cat.image_url) {
+    return `<img class="admin-cat-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`;
+  }
+  return `<div class="admin-cat-img-ph">📦</div>`;
 }
 
 function renderCategoryList() {
   const container = document.getElementById("category-list-container");
   if (!allCategories.length) {
-    container.innerHTML = `<div class="state-box" style="padding:2rem"><div class="state-icon">🗂</div><p>No categories yet.</p></div>`;
+    container.innerHTML = `<div class="state-box" style="padding:2rem"><div class="state-icon">🗂</div><p>No categories yet. Add a Main Category first.</p></div>`;
     return;
   }
-  container.innerHTML = allCategories.map(cat => {
-    const imgHtml = cat.image_url
-      ? `<img class="admin-cat-img" src="${escHtml(cat.image_url)}" alt="${escHtml(cat.name)}" loading="lazy"/>`
-      : `<div class="admin-cat-img-ph">📦</div>`;
-    return `
-      <div class="cat-item" id="cat-row-${cat.id}">
-        ${imgHtml}
-        <div class="cat-item-name" id="cat-name-display-${cat.id}">${escHtml(cat.name)}</div>
-        <div class="cat-item-actions">
-          <button class="btn btn-ghost btn-sm" onclick="startEditCategory('${cat.id}')">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteCategory('${cat.id}', '${escHtml(cat.name)}')">🗑️</button>
+
+  let html = "";
+
+  // Render each header and its subs
+  allHeaders.forEach(header => {
+    const subs = allSubs.filter(s => s.parent_id === header.id);
+    html += `
+      <div class="cat-header-group" id="cat-header-group-${header.id}">
+        <div class="cat-header-row">
+          ${catIconHtml(header)}
+          <div class="cat-header-label">${escHtml(header.name)}</div>
+          <div class="cat-item-actions">
+            <button class="btn btn-ghost btn-sm" onclick="startEditHeader('${header.id}')">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCategory('${header.id}', '${escHtml(header.name)}', true)">🗑️</button>
+          </div>
         </div>
-      </div>
-    `;
-  }).join("");
+        ${subs.length === 0
+          ? `<div style="padding:.3rem 1.5rem;font-size:.8rem;color:var(--light)">No sub-categories yet</div>`
+          : subs.map(sub => `
+            <div class="cat-sub-row" id="cat-row-${sub.id}">
+              ${catIconHtml(sub)}
+              <div class="cat-sub-name">${escHtml(sub.name)}</div>
+              <div class="cat-item-actions">
+                <button class="btn btn-ghost btn-sm" onclick="startEditSub('${sub.id}')">✏️ Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteCategory('${sub.id}', '${escHtml(sub.name)}', false)">🗑️</button>
+              </div>
+            </div>`).join("")
+        }
+      </div>`;
+  });
+
+  // Orphan subs (no matching header — shouldn't happen but show just in case)
+  const orphans = allSubs.filter(s => !allHeaders.find(h => h.id === s.parent_id));
+  if (orphans.length) {
+    html += `<div class="cat-header-group"><div class="cat-header-row"><div class="cat-header-label" style="color:var(--crimson)">⚠️ Orphaned Sub-categories</div></div>`;
+    orphans.forEach(sub => {
+      html += `<div class="cat-sub-row">${catIconHtml(sub)}<div class="cat-sub-name">${escHtml(sub.name)}</div>
+        <div class="cat-item-actions">
+          <button class="btn btn-ghost btn-sm" onclick="startEditSub('${sub.id}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCategory('${sub.id}', '${escHtml(sub.name)}', false)">🗑️</button>
+        </div></div>`;
+    });
+    html += `</div>`;
+  }
+
+  container.innerHTML = html || `<div class="state-box" style="padding:2rem"><div class="state-icon">🗂</div><p>No categories yet.</p></div>`;
 }
 
 function populateCategoryDropdown() {
   const select  = document.getElementById("prod-category");
   const current = select.value;
   select.innerHTML = `<option value="">— Select category —</option>`;
-  allCategories.forEach(cat => {
+  // Group by header in product dropdown
+  allHeaders.forEach(header => {
+    const subs = allSubs.filter(s => s.parent_id === header.id);
+    if (subs.length) {
+      const grp = document.createElement("optgroup");
+      grp.label = header.name;
+      subs.forEach(sub => {
+        const opt = document.createElement("option");
+        opt.value       = sub.id;
+        opt.textContent = sub.name;
+        if (sub.id === current) opt.selected = true;
+        grp.appendChild(opt);
+      });
+      select.appendChild(grp);
+    }
+  });
+  // Also include headers themselves so old products still work
+  allHeaders.forEach(h => {
     const opt = document.createElement("option");
-    opt.value       = cat.id;
-    opt.textContent = cat.name;
-    if (cat.id === current) opt.selected = true;
+    opt.value       = h.id;
+    opt.textContent = `[Header] ${h.name}`;
+    if (h.id === current) opt.selected = true;
     select.appendChild(opt);
   });
 }
 
-/* ── Category: Add ─────────────────────────────────── */
-async function addCategory() {
-  const editId   = document.getElementById("edit-category-id").value;
-  const name     = document.getElementById("cat-name-input").value.trim();
-  const imageFile = document.getElementById("cat-image-input").files[0];
+function populateParentDropdown() {
+  const select = document.getElementById("sub-parent-select");
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = `<option value="">— Select a Main Category —</option>`;
+  allHeaders.forEach(h => {
+    const opt = document.createElement("option");
+    opt.value       = h.id;
+    opt.textContent = h.name;
+    if (h.id === current) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
 
-  if (!name) { setStatus("category-form-status", "⚠️ Category name is required.", "err"); return; }
+/* ── Mode toggle: "header" vs "sub" ─────────────────── */
+function setCatMode(mode) {
+  currentCatMode = mode;
+  document.getElementById("cat-header-form-section").style.display = mode === "header" ? "block" : "none";
+  document.getElementById("cat-sub-form-section").style.display    = mode === "sub"    ? "block" : "none";
+  document.getElementById("cat-mode-header-btn").classList.toggle("active", mode === "header");
+  document.getElementById("cat-mode-sub-btn").classList.toggle("active", mode === "sub");
+}
 
-  setStatus("category-form-status", "⏳ Saving…", "");
-  const btn = document.getElementById("add-category-btn");
+/* ── Icon tab toggle (emoji vs image) ───────────────── */
+function switchIconTab(prefix, type) {
+  const emojiSection = document.getElementById(`${prefix}-emoji-section`);
+  const imageSection = document.getElementById(`${prefix}-image-section`);
+  const emojiTab     = document.getElementById(`${prefix}-tab-emoji`);
+  const imageTab     = document.getElementById(`${prefix}-tab-image`);
+  emojiSection.style.display = type === "emoji" ? "block" : "none";
+  imageSection.style.display = type === "image" ? "block" : "none";
+  emojiTab.classList.toggle("active", type === "emoji");
+  imageTab.classList.toggle("active", type === "image");
+}
+
+/* ── Save Main Category (Header) ────────────────────── */
+async function saveHeader() {
+  const editId    = document.getElementById("edit-header-id").value;
+  const name      = document.getElementById("header-name-input").value.trim();
+  const emojiVal  = document.getElementById("header-emoji-input").value.trim();
+  const imageFile = document.getElementById("header-image-input").files[0];
+  const useEmoji  = document.getElementById("header-emoji-section").style.display !== "none";
+
+  if (!name) { setStatus("header-form-status", "⚠️ Header name is required.", "err"); return; }
+
+  setStatus("header-form-status", "⏳ Saving…", "");
+  const btn = document.getElementById("save-header-btn");
   btn.disabled = true;
 
   try {
-    let image_url = null;
-    if (editId) {
-      const existing = allCategories.find(c => c.id === editId);
-      image_url = existing?.image_url || null;
-    }
-    if (imageFile) {
-      setStatus("category-form-status", "⏳ Uploading image…", "");
-      image_url = await uploadCategoryImage(imageFile);
-    }
+    let image_url = editId ? (allHeaders.find(h => h.id === editId)?.image_url || null) : null;
+    let emoji     = useEmoji ? (emojiVal || null) : null;
 
-    const row = { name, image_url };
+    if (!useEmoji && imageFile) {
+      setStatus("header-form-status", "⏳ Uploading image…", "");
+      image_url = await uploadCategoryImage(imageFile, "header-upload-bar-wrap", "header-upload-bar");
+    }
+    if (useEmoji) image_url = null; // clear image if switching to emoji
 
+    const row = { name, image_url, emoji, parent_id: null };
     let error;
     if (editId) {
       ({ error } = await db.from("categories").update(row).eq("id", editId));
     } else {
       ({ error } = await db.from("categories").insert([row]));
     }
-
     if (error) throw new Error(error.message);
 
-    setStatus("category-form-status", `✅ Category ${editId ? "updated" : "added"}!`, "ok");
-    showToast(`✅ Category ${editId ? "updated" : "added"}!`);
-    resetCategoryForm();
+    setStatus("header-form-status", `✅ Main Category ${editId ? "updated" : "added"}!`, "ok");
+    showToast(`✅ Main Category ${editId ? "updated" : "added"}!`);
+    resetHeaderForm();
     await fetchCategories();
-    setTimeout(() => setStatus("category-form-status", "", ""), 3000);
-
+    setTimeout(() => setStatus("header-form-status", "", ""), 3000);
   } catch (err) {
-    setStatus("category-form-status", `❌ ${err.message}`, "err");
+    setStatus("header-form-status", `❌ ${err.message}`, "err");
   } finally {
     btn.disabled = false;
   }
 }
 
-function startEditCategory(catId) {
-  const cat = allCategories.find(c => c.id === catId);
-  if (!cat) return;
+/* ── Save Sub Category ──────────────────────────────── */
+async function saveSub() {
+  const editId    = document.getElementById("edit-sub-id").value;
+  const parentId  = document.getElementById("sub-parent-select").value;
+  const name      = document.getElementById("sub-name-input").value.trim();
+  const emojiVal  = document.getElementById("sub-emoji-input").value.trim();
+  const imageFile = document.getElementById("sub-image-input").files[0];
+  const useEmoji  = document.getElementById("sub-emoji-section").style.display !== "none";
 
-  document.getElementById("cat-name-input").value  = cat.name;
-  document.getElementById("edit-category-id").value = catId;
-  document.getElementById("add-category-btn").textContent = "💾 Update Category";
-  document.getElementById("cancel-cat-edit-btn").style.display = "inline-flex";
+  if (!parentId) { setStatus("sub-form-status", "⚠️ Please select a Main Category.", "err"); return; }
+  if (!name)     { setStatus("sub-form-status", "⚠️ Sub category name is required.", "err"); return; }
 
-  const preview = document.getElementById("cat-img-preview");
-  if (cat.image_url) {
-    preview.src           = cat.image_url;
-    preview.style.display = "block";
-  } else {
-    preview.style.display = "none";
+  setStatus("sub-form-status", "⏳ Saving…", "");
+  const btn = document.getElementById("save-sub-btn");
+  btn.disabled = true;
+
+  try {
+    let image_url = editId ? (allSubs.find(s => s.id === editId)?.image_url || null) : null;
+    let emoji     = useEmoji ? (emojiVal || null) : null;
+
+    if (!useEmoji && imageFile) {
+      setStatus("sub-form-status", "⏳ Uploading image…", "");
+      image_url = await uploadCategoryImage(imageFile, "sub-upload-bar-wrap", "sub-upload-bar");
+    }
+    if (useEmoji) image_url = null;
+
+    const row = { name, image_url, emoji, parent_id: parentId };
+    let error;
+    if (editId) {
+      ({ error } = await db.from("categories").update(row).eq("id", editId));
+    } else {
+      ({ error } = await db.from("categories").insert([row]));
+    }
+    if (error) throw new Error(error.message);
+
+    setStatus("sub-form-status", `✅ Sub Category ${editId ? "updated" : "added"}!`, "ok");
+    showToast(`✅ Sub Category ${editId ? "updated" : "added"}!`);
+    resetSubForm();
+    await fetchCategories();
+    setTimeout(() => setStatus("sub-form-status", "", ""), 3000);
+  } catch (err) {
+    setStatus("sub-form-status", `❌ ${err.message}`, "err");
+  } finally {
+    btn.disabled = false;
   }
-
-  document.getElementById("cat-name-input").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-function resetCategoryForm() {
-  document.getElementById("cat-name-input").value          = "";
-  document.getElementById("edit-category-id").value        = "";
-  document.getElementById("cat-image-input").value         = "";
-  document.getElementById("cat-img-preview").style.display = "none";
-  document.getElementById("cat-img-preview").src           = "";
-  document.getElementById("add-category-btn").textContent  = "➕ Add Category";
-  document.getElementById("cancel-cat-edit-btn").style.display = "none";
-  document.getElementById("cat-upload-bar-wrap").style.display = "none";
-  document.getElementById("cat-upload-bar").style.width        = "0";
-  setStatus("category-form-status", "", "");
+/* ── Edit: start editing a header ──────────────────── */
+function startEditHeader(headerId) {
+  const cat = allHeaders.find(h => h.id === headerId);
+  if (!cat) return;
+  setCatMode("header");
+  document.getElementById("edit-header-id").value    = headerId;
+  document.getElementById("header-name-input").value = cat.name;
+  document.getElementById("save-header-btn").textContent = "💾 Update Main Category";
+  document.getElementById("cancel-header-edit-btn").style.display = "inline-flex";
+
+  if (cat.emoji) {
+    switchIconTab("header", "emoji");
+    document.getElementById("header-emoji-input").value = cat.emoji;
+  } else if (cat.image_url) {
+    switchIconTab("header", "image");
+    const prev = document.getElementById("header-img-preview");
+    prev.src = cat.image_url; prev.style.display = "block";
+  }
+  document.getElementById("header-name-input").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-async function deleteCategory(catId, catName) {
-  openConfirm(
-    `Delete category "${catName}"? Products in this category will lose their category.`,
-    async () => {
-      const { error } = await db.from("categories").delete().eq("id", catId);
-      closeConfirm();
-      if (error) { showToast(`❌ ${error.message}`); return; }
-      showToast("🗑️ Category deleted.");
-      await fetchCategories();
-      await fetchProducts();
-    },
-    "⚠️ Delete?",
-    "🗑️ Delete"
-  );
+/* ── Edit: start editing a sub ──────────────────────── */
+function startEditSub(subId) {
+  const cat = allSubs.find(s => s.id === subId);
+  if (!cat) return;
+  setCatMode("sub");
+  document.getElementById("edit-sub-id").value       = subId;
+  document.getElementById("sub-name-input").value    = cat.name;
+  document.getElementById("sub-parent-select").value = cat.parent_id || "";
+  document.getElementById("save-sub-btn").textContent = "💾 Update Sub Category";
+  document.getElementById("cancel-sub-edit-btn").style.display = "inline-flex";
+
+  if (cat.emoji) {
+    switchIconTab("sub", "emoji");
+    document.getElementById("sub-emoji-input").value = cat.emoji;
+  } else if (cat.image_url) {
+    switchIconTab("sub", "image");
+    const prev = document.getElementById("sub-img-preview");
+    prev.src = cat.image_url; prev.style.display = "block";
+  }
+  document.getElementById("sub-name-input").scrollIntoView({ behavior: "smooth", block: "center" });
 }
+
+function resetHeaderForm() {
+  document.getElementById("edit-header-id").value           = "";
+  document.getElementById("header-name-input").value        = "";
+  document.getElementById("header-emoji-input").value       = "";
+  document.getElementById("header-image-input").value       = "";
+  document.getElementById("header-img-preview").style.display = "none";
+  document.getElementById("header-img-preview").src         = "";
+  document.getElementById("save-header-btn").textContent    = "➕ Save Main Category";
+  document.getElementById("cancel-header-edit-btn").style.display = "none";
+  document.getElementById("header-upload-bar-wrap").style.display = "none";
+  document.getElementById("header-upload-bar").style.width        = "0";
+  switchIconTab("header", "emoji");
+  setStatus("header-form-status", "", "");
+}
+
+function resetSubForm() {
+  document.getElementById("edit-sub-id").value              = "";
+  document.getElementById("sub-name-input").value           = "";
+  document.getElementById("sub-emoji-input").value          = "";
+  document.getElementById("sub-image-input").value          = "";
+  document.getElementById("sub-img-preview").style.display  = "none";
+  document.getElementById("sub-img-preview").src            = "";
+  document.getElementById("sub-parent-select").value        = "";
+  document.getElementById("save-sub-btn").textContent       = "➕ Save Sub Category";
+  document.getElementById("cancel-sub-edit-btn").style.display = "none";
+  document.getElementById("sub-upload-bar-wrap").style.display = "none";
+  document.getElementById("sub-upload-bar").style.width         = "0";
+  switchIconTab("sub", "emoji");
+  setStatus("sub-form-status", "", "");
+}
+
+async function deleteCategory(catId, catName, isHeader) {
+  const msg = isHeader
+    ? `Delete header "${catName}"? All its sub-categories will also be deleted!`
+    : `Delete sub-category "${catName}"? Products in it will lose their category.`;
+  openConfirm(msg, async () => {
+    let error;
+    if (isHeader) {
+      // Delete all subs first
+      const subIds = allSubs.filter(s => s.parent_id === catId).map(s => s.id);
+      if (subIds.length) {
+        ({ error } = await db.from("categories").delete().in("id", subIds));
+        if (error) { closeConfirm(); showToast(`❌ ${error.message}`); return; }
+      }
+    }
+    ({ error } = await db.from("categories").delete().eq("id", catId));
+    closeConfirm();
+    if (error) { showToast(`❌ ${error.message}`); return; }
+    showToast("🗑️ Deleted.");
+    await fetchCategories();
+    await fetchProducts();
+  }, "⚠️ Delete?", "🗑️ Delete");
+}
+
+/* ── Kept for backward compat — old event listeners reference this */
+function resetCategoryForm() { resetHeaderForm(); resetSubForm(); }
 
 /* ═══════════════════════════════════════════════════════════
    IMAGE UPLOAD — Product (via Cloudinary)
@@ -302,13 +498,10 @@ async function uploadProductImage(file) {
 /* ═══════════════════════════════════════════════════════════
    IMAGE UPLOAD — Category (via Cloudinary)
 ═══════════════════════════════════════════════════════════ */
-async function uploadCategoryImage(file) {
+async function uploadCategoryImage(file, barWrapId = "cat-upload-bar-wrap", barId = "cat-upload-bar") {
   // Max 2 MB check before sending to Cloudinary
   if (file.size > 2 * 1024 * 1024) throw new Error("File is larger than 2 MB.");
-  return await uploadToCloudinary(file, "store-categories", {
-    barWrapId: "cat-upload-bar-wrap",
-    barId:     "cat-upload-bar",
-  });
+  return await uploadToCloudinary(file, "store-categories", { barWrapId, barId });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1034,25 +1227,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  /* ── Category form ─────────────────────────────────── */
-  document.getElementById("add-category-btn").addEventListener("click", addCategory);
-  document.getElementById("cat-name-input").addEventListener("keydown", e => {
-    if (e.key === "Enter") addCategory();
+
+  /* ── Category forms ─────────────────────────────────── */
+  // Header form
+  const saveHeaderBtn = document.getElementById("save-header-btn");
+  if (saveHeaderBtn) saveHeaderBtn.addEventListener("click", saveHeader);
+  const cancelHeaderBtn = document.getElementById("cancel-header-edit-btn");
+  if (cancelHeaderBtn) cancelHeaderBtn.addEventListener("click", resetHeaderForm);
+  const headerNameInput = document.getElementById("header-name-input");
+  if (headerNameInput) headerNameInput.addEventListener("keydown", e => { if (e.key === "Enter") saveHeader(); });
+  const headerImageInput = document.getElementById("header-image-input");
+  if (headerImageInput) headerImageInput.addEventListener("change", e => {
+    const file = e.target.files[0];
+    const preview = document.getElementById("header-img-preview");
+    if (file) { preview.src = URL.createObjectURL(file); preview.style.display = "block"; }
+    else { preview.style.display = "none"; }
   });
 
-  document.getElementById("cat-image-input").addEventListener("change", e => {
-    const file    = e.target.files[0];
-    const preview = document.getElementById("cat-img-preview");
-    if (file) {
-      preview.src           = URL.createObjectURL(file);
-      preview.style.display = "block";
-    } else {
-      preview.style.display = "none";
-    }
+  // Sub form
+  const saveSubBtn = document.getElementById("save-sub-btn");
+  if (saveSubBtn) saveSubBtn.addEventListener("click", saveSub);
+  const cancelSubBtn = document.getElementById("cancel-sub-edit-btn");
+  if (cancelSubBtn) cancelSubBtn.addEventListener("click", resetSubForm);
+  const subNameInput = document.getElementById("sub-name-input");
+  if (subNameInput) subNameInput.addEventListener("keydown", e => { if (e.key === "Enter") saveSub(); });
+  const subImageInput = document.getElementById("sub-image-input");
+  if (subImageInput) subImageInput.addEventListener("change", e => {
+    const file = e.target.files[0];
+    const preview = document.getElementById("sub-img-preview");
+    if (file) { preview.src = URL.createObjectURL(file); preview.style.display = "block"; }
+    else { preview.style.display = "none"; }
   });
-
-  const cancelCatBtn = document.getElementById("cancel-cat-edit-btn");
-  if (cancelCatBtn) cancelCatBtn.addEventListener("click", resetCategoryForm);
 
   /* ── Orders tab — refresh button ───────────────────── */
   const refreshOrdersBtn = document.getElementById("refresh-orders-btn");
