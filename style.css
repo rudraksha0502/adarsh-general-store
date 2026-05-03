@@ -1057,6 +1057,33 @@ body.admin-body { background: #F0EDE8; }
 .cat-item-name { flex: 1; font-weight: 600; font-size: .9rem; }
 .cat-item-actions { display: flex; gap: .4rem; }
 
+/* Cat mode toggle buttons */
+.cat-mode-btn.active { background: var(--saffron) !important; color: #fff !important; border-color: var(--saffron) !important; }
+
+/* Icon type toggle tabs */
+.cat-icon-tabs { display: flex; gap: .4rem; margin-top: .35rem; }
+.cat-icon-tab {
+  padding: .3rem .8rem; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--cream); color: var(--dark); font-size: .8rem; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.cat-icon-tab.active { background: var(--saffron); color: #fff; border-color: var(--saffron); }
+
+/* Category header group in admin list */
+.cat-header-group { margin-bottom: 1.1rem; }
+.cat-header-row {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .55rem .65rem; border-radius: var(--radius-xs);
+  background: var(--cream-dk); margin-bottom: .35rem;
+}
+.cat-header-label { flex: 1; font-weight: 700; font-size: .9rem; color: var(--dark); }
+.cat-sub-row {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem 0 .5rem 1.5rem; border-bottom: 1px solid var(--cream-dk);
+}
+.cat-sub-row:last-child { border-bottom: none; }
+.cat-sub-name { flex: 1; font-size: .87rem; color: var(--dark); }
+
 /* Category image in admin list */
 .admin-cat-img {
   width: 40px; height: 40px; border-radius: var(--radius-xs);
@@ -1068,6 +1095,12 @@ body.admin-body { background: #F0EDE8; }
   background: var(--cream-dk);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.2rem; flex-shrink: 0;
+}
+.admin-cat-emoji-ph {
+  width: 40px; height: 40px; border-radius: var(--radius-xs);
+  background: var(--cream-dk);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; flex-shrink: 0;
 }
 
 /* Count badge */

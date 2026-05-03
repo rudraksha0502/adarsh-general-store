@@ -160,44 +160,102 @@
   </div>
 
   <!-- ── CATEGORIES TAB ────────────────────────────── -->
-  <div id="tab-categories" class="admin-wrap" style="display:none">
+  <div id="tab-categories" class="admin-wrap admin-single-col" style="display:none">
+    <div style="display:grid;gap:1.5rem">
 
-    <!-- LEFT: Add / Edit Category -->
-    <div>
-      <div class="admin-card">
-        <div class="admin-card-title">🗂 Manage Categories</div>
+      <!-- ── Section toggle buttons ── -->
+      <div class="admin-card" style="padding:.75rem 1rem">
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+          <span style="font-weight:600;color:var(--dark);margin-right:.25rem">Manage:</span>
+          <button class="btn btn-primary btn-sm cat-mode-btn active" id="cat-mode-header-btn" onclick="setCatMode('header')">🗂 Main Category (Header)</button>
+          <button class="btn btn-ghost btn-sm cat-mode-btn" id="cat-mode-sub-btn" onclick="setCatMode('sub')">📌 Sub Category</button>
+        </div>
+      </div>
+
+      <!-- ══ MAIN CATEGORY FORM ══ -->
+      <div id="cat-header-form-section" class="admin-card">
+        <div class="admin-card-title">🗂 Main Category (Header)</div>
+        <p style="font-size:.8rem;color:var(--light);margin-bottom:1rem">Headers group your sub-categories in the storefront (e.g. "Personal Care", "Beverages").</p>
+
+        <input type="hidden" id="edit-header-id"/>
 
         <div class="form-group">
-          <label for="cat-name-input">Category Name *</label>
-          <input type="text" id="cat-name-input" placeholder="e.g. Dairy Products"/>
+          <label for="header-name-input">Header Name *</label>
+          <input type="text" id="header-name-input" placeholder="e.g. Personal Care"/>
         </div>
 
-        <!-- Category Image -->
+        <!-- Emoji OR Image -->
         <div class="form-group">
-          <label for="cat-image-input">Category Icon / Image</label>
-          <input type="file" id="cat-image-input" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"/>
-          <div class="img-preview-wrap">
-            <img id="cat-img-preview" class="img-preview" style="display:none" alt="Category preview"/>
+          <label>Header Icon</label>
+          <div class="cat-icon-tabs">
+            <button class="cat-icon-tab active" id="header-tab-emoji" type="button" onclick="switchIconTab('header','emoji')">😀 Emoji</button>
+            <button class="cat-icon-tab" id="header-tab-image" type="button" onclick="switchIconTab('header','image')">🖼 Image</button>
           </div>
-          <div class="upload-bar-wrap" id="cat-upload-bar-wrap">
-            <div class="upload-bar" id="cat-upload-bar"></div>
+          <div id="header-emoji-section" style="margin-top:.5rem">
+            <input type="text" id="header-emoji-input" placeholder="Paste or type an emoji e.g. 🛁" maxlength="8" style="font-size:1.5rem;width:6rem;text-align:center"/>
+            <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.25rem">Single emoji shown on category tile</small>
           </div>
-          <small style="color:#9A9A9A;font-size:.75rem;margin-top:.25rem;display:block">
-            Shown as tile image in storefront · JPG/PNG/WebP/SVG · Max 2 MB
-          </small>
+          <div id="header-image-section" style="display:none;margin-top:.5rem">
+            <input type="file" id="header-image-input" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"/>
+            <div class="img-preview-wrap"><img id="header-img-preview" class="img-preview" style="display:none" alt="Header preview"/></div>
+            <div class="upload-bar-wrap" id="header-upload-bar-wrap"><div class="upload-bar" id="header-upload-bar"></div></div>
+            <small style="color:#9A9A9A;font-size:.75rem;margin-top:.25rem;display:block">JPG/PNG/WebP/SVG · Max 2 MB</small>
+          </div>
         </div>
 
         <div style="display:flex;gap:.7rem">
-          <button class="btn btn-primary btn-full" id="add-category-btn">➕ Add Category</button>
-          <button class="btn btn-ghost" id="cancel-cat-edit-btn" style="display:none">✕ Cancel</button>
+          <button class="btn btn-primary btn-full" id="save-header-btn">➕ Save Main Category</button>
+          <button class="btn btn-ghost" id="cancel-header-edit-btn" style="display:none">✕ Cancel</button>
         </div>
-        <input type="hidden" id="edit-category-id"/>
-        <div class="form-status" id="category-form-status" style="display:none"></div>
+        <div class="form-status" id="header-form-status" style="display:none"></div>
       </div>
-    </div>
 
-    <!-- RIGHT: Category List -->
-    <div>
+      <!-- ══ SUB CATEGORY FORM ══ -->
+      <div id="cat-sub-form-section" class="admin-card" style="display:none">
+        <div class="admin-card-title">📌 Sub Category</div>
+        <p style="font-size:.8rem;color:var(--light);margin-bottom:1rem">Sub-categories appear as tiles under a header. Select which header it belongs to.</p>
+
+        <input type="hidden" id="edit-sub-id"/>
+
+        <div class="form-group">
+          <label for="sub-parent-select">Belongs to Header *</label>
+          <select id="sub-parent-select">
+            <option value="">— Select a Main Category —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="sub-name-input">Sub Category Name *</label>
+          <input type="text" id="sub-name-input" placeholder="e.g. Shampoo &amp; Conditioner"/>
+        </div>
+
+        <!-- Emoji OR Image -->
+        <div class="form-group">
+          <label>Sub Category Icon</label>
+          <div class="cat-icon-tabs">
+            <button class="cat-icon-tab active" id="sub-tab-emoji" type="button" onclick="switchIconTab('sub','emoji')">😀 Emoji</button>
+            <button class="cat-icon-tab" id="sub-tab-image" type="button" onclick="switchIconTab('sub','image')">🖼 Image</button>
+          </div>
+          <div id="sub-emoji-section" style="margin-top:.5rem">
+            <input type="text" id="sub-emoji-input" placeholder="e.g. 💇" maxlength="8" style="font-size:1.5rem;width:6rem;text-align:center"/>
+            <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.25rem">Single emoji shown on category tile</small>
+          </div>
+          <div id="sub-image-section" style="display:none;margin-top:.5rem">
+            <input type="file" id="sub-image-input" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"/>
+            <div class="img-preview-wrap"><img id="sub-img-preview" class="img-preview" style="display:none" alt="Sub preview"/></div>
+            <div class="upload-bar-wrap" id="sub-upload-bar-wrap"><div class="upload-bar" id="sub-upload-bar"></div></div>
+            <small style="color:#9A9A9A;font-size:.75rem;margin-top:.25rem;display:block">JPG/PNG/WebP/SVG · Max 2 MB</small>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.7rem">
+          <button class="btn btn-primary btn-full" id="save-sub-btn">➕ Save Sub Category</button>
+          <button class="btn btn-ghost" id="cancel-sub-edit-btn" style="display:none">✕ Cancel</button>
+        </div>
+        <div class="form-status" id="sub-form-status" style="display:none"></div>
+      </div>
+
+      <!-- ══ CATEGORY LIST ══ -->
       <div class="admin-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
           <div class="admin-card-title" style="margin-bottom:0">📋 All Categories</div>
@@ -206,6 +264,7 @@
         <div id="category-list-loading" class="spinner-wrap"><div class="spinner"></div></div>
         <div id="category-list-container"></div>
       </div>
+
     </div>
   </div>
 
