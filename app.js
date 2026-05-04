@@ -580,7 +580,7 @@ function openProductModal(product) {
   if (product.out_of_stock) return; // guard against direct calls
   modalProduct = product;
   const variants = parseVariants(product.variants);
-  modalVariant   = variants.length ? variants[0] : null;
+  modalVariant   = variants.length ? (variants.find(v => !v.out_of_stock) || variants[0]) : null;
   renderProductModal();
   document.getElementById("product-modal").style.display = "flex";
   // Apply two-column desktop class
@@ -606,9 +606,10 @@ function renderProductModal() {
 
   let variantsHtml = "";
   if (variants.length) {
-    const chips = variants.map((v, i) =>
-      `<button class="variant-chip ${i === 0 ? "active" : ""}" data-idx="${i}">${escHtml(v.name)} — ₹${v.price.toLocaleString("en-IN")}</button>`
-    ).join("");
+    const chips = variants.map((v, i) => {
+      const isOos = v.out_of_stock === true;
+      return `<button class="variant-chip ${i === 0 ? "active" : ""} ${isOos ? "variant-chip-oos" : ""}" data-idx="${i}" ${isOos ? "disabled" : ""}>${escHtml(v.name)} — ₹${v.price.toLocaleString("en-IN")}${isOos ? " <span class=\"variant-oos-tag\">Out of Stock</span>" : ""}</button>`;
+    }).join("");
     variantsHtml = `<div class="variant-label">Choose variant:</div><div class="variant-chips">${chips}</div>`;
   }
 
@@ -631,9 +632,18 @@ function renderProductModal() {
     <button class="add-cart-btn" id="modal-add-cart-btn">🛒 Add to Cart</button>
   `;
 
+  // Set initial add-to-cart button state based on first selected variant
+  const addBtn = document.getElementById("modal-add-cart-btn");
+  if (variants.length && modalVariant?.out_of_stock) {
+    addBtn.disabled = true;
+    addBtn.textContent = "🚫 Out of Stock";
+    addBtn.classList.add("add-cart-btn-oos");
+  }
+
   document.querySelectorAll(".variant-chip").forEach(chip => {
     chip.addEventListener("click", () => {
       const idx = +chip.dataset.idx;
+      if (variants[idx].out_of_stock) return; // OOS chips are disabled, but guard anyway
       modalVariant = variants[idx];
       const newPrice   = modalVariant.price;
       const newMrp     = (modalVariant.mrp && modalVariant.mrp > newPrice)
@@ -646,10 +656,15 @@ function renderProductModal() {
         ${newDisc > 0 ? `<span class="discount-badge discount-badge-lg">${newDisc}% off</span>` : ""}
       `;
       document.querySelectorAll(".variant-chip").forEach(c => c.classList.toggle("active", c === chip));
+      // Update add-to-cart button
+      addBtn.disabled = false;
+      addBtn.textContent = "🛒 Add to Cart";
+      addBtn.classList.remove("add-cart-btn-oos");
     });
   });
 
   document.getElementById("modal-add-cart-btn").addEventListener("click", () => {
+    if (modalVariant?.out_of_stock) return;
     const finalPrice = modalVariant ? modalVariant.price : (modalProduct.baseprice || 0);
     const finalMrp   = (modalVariant?.mrp && modalVariant.mrp > finalPrice)
       ? modalVariant.mrp

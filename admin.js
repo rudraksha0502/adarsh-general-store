@@ -522,7 +522,7 @@ async function uploadCategoryImage(file, barWrapId = "cat-upload-bar-wrap", barI
 /* ═══════════════════════════════════════════════════════════
    VARIANTS UI
 ═══════════════════════════════════════════════════════════ */
-function addVariantRow(name = "", price = "", mrp = "") {
+function addVariantRow(name = "", price = "", mrp = "", out_of_stock = false) {
   const id  = variantCount++;
   const row = document.createElement("div");
   row.className = "variant-row";
@@ -531,6 +531,10 @@ function addVariantRow(name = "", price = "", mrp = "") {
     <input type="text"   placeholder="Name (e.g. 500g)"   value="${escHtml(name)}"           id="vname-${id}"/>
     <input type="number" placeholder="Selling Price (₹)"  value="${escHtml(String(price))}" id="vprice-${id}" min="0" step="0.01"/>
     <input type="number" placeholder="MRP ₹ (optional)"   value="${escHtml(String(mrp))}"   id="vmrp-${id}"   min="0" step="0.01"/>
+    <label class="variant-oos-label" title="Mark this variant as out of stock">
+      <input type="checkbox" class="variant-oos-cb" id="voos-${id}" ${out_of_stock ? "checked" : ""}/>
+      <span class="variant-oos-text">OOS</span>
+    </label>
     <button class="remove-variant" onclick="removeVariantRow('vrow-${id}')" aria-label="Remove">✕</button>
   `;
   document.getElementById("variants-list").appendChild(row);
@@ -545,9 +549,10 @@ function getVariantsFromForm() {
     const price    = parseFloat(inputs[0]?.value);
     const mrpRaw   = parseFloat(inputs[1]?.value);
     const mrp      = (!isNaN(mrpRaw) && mrpRaw > 0) ? mrpRaw : null;
+    const oos      = row.querySelector('.variant-oos-cb')?.checked || false;
     if (name && !isNaN(price) && price >= 0) {
       if (mrp !== null && mrp < price) return acc; // skip invalid: MRP < selling price
-      acc.push({ name, price, mrp });
+      acc.push({ name, price, mrp, out_of_stock: oos });
     }
     return acc;
   }, []);
@@ -791,7 +796,7 @@ function startEditProduct(productId) {
 
   document.getElementById("variants-list").innerHTML = "";
   variantCount = 0;
-  parseVariants(p.variants).forEach(v => addVariantRow(v.name, v.price, v.mrp || ""));
+  parseVariants(p.variants).forEach(v => addVariantRow(v.name, v.price, v.mrp || "", v.out_of_stock || false));
 
   setStatus("product-form-status", "", "");
   document.querySelector('#tab-add-product .admin-card').scrollIntoView({ behavior: "smooth", block: "start" });

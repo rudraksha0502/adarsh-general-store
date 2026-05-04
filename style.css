@@ -449,7 +449,7 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Product Card (compact & modern) ──────────────────── */
 .product-card {
-  background: var(--white);
+  background: var(--cream);
   border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -500,6 +500,8 @@ input, textarea, select { font-family: inherit; }
 .product-card-body {
   padding: .7rem .75rem .75rem;
   flex: 1; display: flex; flex-direction: column;
+  background: linear-gradient(160deg, #EAF4F4 0%, #F5EFE6 100%);
+  border-top: 1.5px solid var(--border);
 }
 .product-card-category {
   font-size: .67rem; font-weight: 700; text-transform: uppercase;
@@ -717,6 +719,29 @@ input, textarea, select { font-family: inherit; }
 }
 .variant-chip:hover, .variant-chip.active {
   background: var(--saffron); border-color: var(--saffron); color: var(--white);
+}
+.variant-chip-oos {
+  opacity: .55;
+  cursor: not-allowed;
+  text-decoration: line-through;
+  border-style: dashed;
+}
+.variant-chip-oos:hover {
+  background: var(--cream); border-color: var(--border); color: var(--mid);
+}
+.variant-oos-tag {
+  display: inline-block;
+  font-size: .7em;
+  font-weight: 700;
+  color: var(--crimson);
+  margin-left: .3em;
+  text-decoration: none;
+  vertical-align: middle;
+}
+.add-cart-btn-oos {
+  background: var(--light) !important;
+  cursor: not-allowed;
+  opacity: .7;
 }
 
 .add-cart-btn {
@@ -1079,6 +1104,15 @@ body.admin-body { background: #F0EDE8; }
   font-size: .83rem; background: var(--white);
 }
 .variant-row input:focus { outline: none; border-color: var(--saffron); }
+.variant-oos-label {
+  display: flex; align-items: center; gap: .3rem;
+  cursor: pointer; flex-shrink: 0;
+  font-size: .78rem; font-weight: 700;
+  color: var(--mid);
+  white-space: nowrap;
+}
+.variant-oos-label input[type="checkbox"] { accent-color: var(--crimson); width: 15px; height: 15px; cursor: pointer; }
+.variant-oos-label:has(input:checked) .variant-oos-text { color: var(--crimson); }
 .remove-variant {
   background: none; border: none; color: var(--light);
   font-size: 1rem; transition: var(--transition); flex-shrink: 0;
