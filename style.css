@@ -469,7 +469,7 @@ input, textarea, select { font-family: inherit; }
 .product-card-img {
   width: 100%; height: 160px;
   object-fit: cover;
-  background: var(--cream-dk);
+  background: #ffffff;
   /* GPU-composited layer avoids repaints during scroll */
   will-change: transform;
   /* Reserve space before image loads (prevents layout shift) */
@@ -478,7 +478,7 @@ input, textarea, select { font-family: inherit; }
 }
 .product-card-img-placeholder {
   width: 100%; height: 160px;
-  background: linear-gradient(135deg, var(--cream-dk), var(--border));
+  background: #ffffff;
   display: flex; align-items: center; justify-content: center;
   font-size: 2.4rem;
 }
@@ -622,7 +622,7 @@ input, textarea, select { font-family: inherit; }
     width: 100%;
     object-fit: contain;
     border-radius: var(--radius-sm);
-    background: var(--cream-dk);
+    background: #ffffff;
   }
   .modal-box.product-detail-box .modal-prod-img-placeholder {
     min-height: 260px;
@@ -658,11 +658,11 @@ input, textarea, select { font-family: inherit; }
   height: 240px;
   object-fit: contain;       /* changed from cover → contain so image is never cropped */
   border-radius: var(--radius-sm); margin-bottom: 1.1rem;
-  background: var(--cream-dk);
+  background: #ffffff;
 }
 .modal-prod-img-placeholder {
   width: 100%; height: 230px; border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--cream-dk), var(--border));
+  background: #ffffff;
   display: flex; align-items: center; justify-content: center;
   font-size: 4rem; margin-bottom: 1.1rem;
 }
