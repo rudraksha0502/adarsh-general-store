@@ -1432,14 +1432,34 @@ function wireEvents() {
     }
   });
 
-  /* FEATURE 2: Sort dropdown — change fires applyFilters which reads activeSortKey */
-  const sortSelect = document.getElementById("sort-select");
-  if (sortSelect) {
-    sortSelect.addEventListener("change", () => {
-      activeSortKey = sortSelect.value;
-      applyFilters(); // re-render current list with new sort, no reload
-    });
-  }
+  /* FEATURE 2: Sort cycle button — cycles through sort options on each click */
+  // (no sort-select dropdown anymore; button is inline in section header)
+}
+
+/* ── Sort cycle logic ────────────────────────────────────── */
+const SORT_CYCLE = [
+  { key: "default",      label: "Sort",       arrow: "↕" },
+  { key: "price-asc",    label: "Price",      arrow: "↑" },
+  { key: "price-desc",   label: "Price",      arrow: "↓" },
+  { key: "name-asc",     label: "A–Z",        arrow: "↑" },
+  { key: "name-desc",    label: "Z–A",        arrow: "↓" },
+  { key: "discount-desc",label: "Discount",   arrow: "↓" },
+];
+let sortCycleIndex = 0;
+
+function cycleSortKey() {
+  sortCycleIndex = (sortCycleIndex + 1) % SORT_CYCLE.length;
+  const opt = SORT_CYCLE[sortCycleIndex];
+  activeSortKey = opt.key;
+
+  const labelEl = document.getElementById("sort-cycle-label");
+  const arrowEl = document.getElementById("sort-cycle-arrow");
+  const btn     = document.getElementById("sort-cycle-btn");
+  if (labelEl) labelEl.textContent = opt.label;
+  if (arrowEl) arrowEl.textContent = opt.arrow;
+  if (btn)     btn.classList.toggle("active", sortCycleIndex !== 0);
+
+  applyFilters();
 }
 
 /* ══════════════════════════════════════════════════════════

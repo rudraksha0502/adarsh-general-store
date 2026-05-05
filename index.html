@@ -121,20 +121,14 @@
 <section class="products-section">
   <div class="section-header">
     <h2 class="section-title" id="section-title">All Products</h2>
-    <span class="product-count" id="product-count"></span>
+    <!-- FEATURE 2: Sort cycle button — replaces dropdown -->
+    <button class="sort-cycle-btn" id="sort-cycle-btn" aria-label="Sort products" onclick="cycleSortKey()">
+      <span id="sort-cycle-label">Sort</span>
+      <span class="sort-cycle-arrow" id="sort-cycle-arrow">↕</span>
+    </button>
   </div>
-  <!-- FEATURE 2: Sort Bar — no page reload, client-side only -->
-  <div class="sort-bar">
-    <label for="sort-select">Sort by:</label>
-    <select id="sort-select" class="sort-select" aria-label="Sort products">
-      <option value="default">Default</option>
-      <option value="price-asc">Price: Low → High</option>
-      <option value="price-desc">Price: High → Low</option>
-      <option value="name-asc">A → Z</option>
-      <option value="name-desc">Z → A</option>
-      <option value="discount-asc">Discount: Low → High</option>
-      <option value="discount-desc">Discount: High → Low</option>
-    </select>
+  <div class="sort-count-row">
+    <span class="product-count" id="product-count"></span>
   </div>
   <div id="products-container">
     <div class="spinner-wrap"><div class="spinner"></div></div>
