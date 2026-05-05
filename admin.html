@@ -56,7 +56,13 @@
           📋 Orders <span class="orders-badge" id="orders-badge" style="display:none"></span>
         </button>
         <button class="admin-nav-link" data-tab="coupons">🏷️ Coupons</button>
+        <button class="admin-nav-link" data-tab="analytics">📊 Analytics</button>
         <a href="index.html" class="admin-nav-link" target="_blank">🔗 View Store</a>
+        <!-- FEATURE 1: Store Open/Close toggle button -->
+        <button class="store-toggle-btn" id="store-toggle-btn" title="Toggle store open/closed">
+          <span id="store-toggle-icon">⏳</span>
+          <span id="store-toggle-label">Loading…</span>
+        </button>
         <button class="admin-logout" id="logout-btn">Logout</button>
       </div>
     </div>
@@ -82,18 +88,58 @@
           <textarea id="prod-desc" rows="2" placeholder="Short description…"></textarea>
         </div>
 
-        <!-- MRP field -->
+        <!-- ── PRICING TYPE SELECTOR ── -->
         <div class="form-group">
-          <label for="prod-mrp">MRP (₹)</label>
-          <input type="number" id="prod-mrp" placeholder="199" min="0" step="0.01"/>
-          <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Original price before discount (shown with strikethrough)</small>
+          <label>Pricing Type *</label>
+          <div class="pricing-type-toggle" id="pricing-type-toggle">
+            <button type="button" class="pricing-type-btn active" id="pricing-btn-fixed" onclick="setPricingType('fixed')">
+              🏷️ Fixed Price
+            </button>
+            <button type="button" class="pricing-type-btn" id="pricing-btn-dynamic" onclick="setPricingType('dynamic')">
+              ⚖️ Dynamic (per KG)
+            </button>
+          </div>
+          <input type="hidden" id="prod-pricing-type" value="fixed"/>
         </div>
 
-        <!-- Selling / Base Price -->
-        <div class="form-group">
-          <label for="prod-price">Selling Price (₹) *</label>
-          <input type="number" id="prod-price" placeholder="149" min="0" step="0.01"/>
-          <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Discounted price the customer pays</small>
+        <!-- ── FIXED PRICING FIELDS ── -->
+        <div id="fixed-pricing-section">
+          <!-- MRP field -->
+          <div class="form-group">
+            <label for="prod-mrp">MRP (₹)</label>
+            <input type="number" id="prod-mrp" placeholder="199" min="0" step="0.01"/>
+            <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Original price before discount (shown with strikethrough)</small>
+          </div>
+
+          <!-- Selling / Base Price -->
+          <div class="form-group">
+            <label for="prod-price">Selling Price (₹) *</label>
+            <input type="number" id="prod-price" placeholder="149" min="0" step="0.01"/>
+            <div id="discount-preview" style="display:none;margin-top:.3rem;font-size:.8rem;color:var(--saffron);font-weight:600"></div>
+            <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Discounted price the customer pays</small>
+          </div>
+        </div>
+
+        <!-- ── DYNAMIC PRICING FIELDS ── -->
+        <div id="dynamic-pricing-section" style="display:none">
+          <div class="dynamic-pricing-info">
+            ⚖️ Dynamic pricing lets customers buy any quantity. Price is calculated from <strong>Price per KG</strong>.
+          </div>
+          <div class="form-group">
+            <label for="prod-price-per-kg">Price per KG (₹) *</label>
+            <input type="number" id="prod-price-per-kg" placeholder="e.g. 120" min="0" step="0.01"/>
+            <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Price for 1000g (customers see calculated price)</small>
+          </div>
+          <div class="form-group">
+            <label for="prod-min-qty">Minimum Quantity (grams) *</label>
+            <input type="number" id="prod-min-qty" placeholder="e.g. 100" min="1" step="1"/>
+            <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Minimum order quantity in grams (e.g. 100 = 100g minimum)</small>
+          </div>
+          <div class="form-group">
+            <label for="prod-step-size">Step Size (grams) *</label>
+            <input type="number" id="prod-step-size" placeholder="e.g. 50" min="1" step="1"/>
+            <small style="color:#9A9A9A;font-size:.75rem;display:block;margin-top:.2rem">Quantity increments (e.g. 50 = 100g, 150g, 200g…)</small>
+          </div>
         </div>
 
         <div class="form-group">

@@ -20,6 +20,11 @@ function cartSave() {
   localStorage.setItem("ags_cart", JSON.stringify(cart));
 }
 function cartAdd(item) {
+  /* FEATURE 1: Backend enforcement — block add-to-cart when store is closed */
+  if (!storeIsOpen) {
+    showToast("🔒 Store is currently closed. Please come back later.");
+    return;
+  }
   const idx = cart.findIndex(c => c.productId === item.productId && c.variantName === item.variantName);
   if (idx > -1) { cart[idx].qty += 1; }
   else           { cart.push({ ...item, qty: 1 }); }
@@ -56,6 +61,12 @@ let allCategories = [];
 let activeCatId   = "all";
 let searchQuery   = "";
 
+/* FEATURE 1: Store open/close state — loaded from DB settings table */
+let storeIsOpen   = true; // default to open until fetched
+
+/* FEATURE 2: Sort state — client-side only, no reload */
+let activeSortKey = "default"; // "default"|"price-asc"|"price-desc"|"name-asc"|"name-desc"|"discount-asc"|"discount-desc"
+
 let modalProduct = null;
 let modalVariant = null;
 
@@ -75,9 +86,18 @@ let allCoupons      = [];   // cached from DB
 ══════════════════════════════════════════════════════════ */
 async function fetchCategories() {
   try {
+    // FEATURE 3: Fetch all categories and sort client-side by numeric prefix
+    // This guarantees consistent order in both the modal AND admin list.
+    // The DB .order("name") is kept as a secondary sort; numeric prefix is primary.
     const { data, error } = await db.from("categories").select("*").order("name");
     if (error) { console.error("fetchCategories error:", error); return; }
-    allCategories = data || [];
+    // Sort: parent categories (headers) by numeric prefix, then alphabetically
+    allCategories = (data || []).sort((a, b) => {
+      const na = _numericPrefix(a.name);
+      const nb = _numericPrefix(b.name);
+      if (na !== nb) return na - nb;
+      return a.name.localeCompare(b.name);
+    });
     renderCategoryTiles();
   } catch (err) {
     console.error("fetchCategories failed:", err);
@@ -90,7 +110,7 @@ async function fetchProducts() {
     // Fetch only the columns the storefront actually needs (speeds up large catalogs)
     const { data, error } = await db
       .from("products")
-      .select("id, name, description, imageurl, baseprice, mrp, variants, category_id, out_of_stock, categories(name)")
+      .select("id, name, description, imageurl, baseprice, mrp, pricing_type, price_per_kg, min_qty, step_size, variants, category_id, out_of_stock, categories(name)")
       .order("name");
     if (error) {
       console.error("fetchProducts error:", error);
@@ -108,14 +128,32 @@ async function fetchProducts() {
 /* ── Silent refresh (no spinner flash) used by PTR ───── */
 async function refreshData() {
   try {
-    const [catRes, prodRes] = await Promise.all([
+    const [storeRes, catRes, prodRes] = await Promise.all([
+      // FEATURE 1: Also refresh store status on pull-to-refresh
+      db.from("settings").select("value").eq("key", "store_open").single(),
       db.from("categories").select("*").order("name"),
       db.from("products")
-        .select("id, name, description, imageurl, baseprice, mrp, variants, category_id, out_of_stock, categories(name)")
+        .select("id, name, description, imageurl, baseprice, mrp, pricing_type, price_per_kg, min_qty, step_size, variants, category_id, out_of_stock, categories(name)")
         .order("name")
     ]);
-    if (!catRes.error)  { allCategories = catRes.data  || []; renderCategoryTiles(); }
-    if (!prodRes.error) { allProducts   = prodRes.data || []; applyFilters(); }
+
+    // Update store status
+    if (!storeRes.error) {
+      storeIsOpen = storeRes.data.value !== "false";
+      applyStoreStatus();
+    }
+
+    if (!catRes.error)  {
+      // FEATURE 3: Re-sort by numeric prefix after refresh too
+      allCategories = (catRes.data || []).sort((a, b) => {
+        const na = _numericPrefix(a.name);
+        const nb = _numericPrefix(b.name);
+        if (na !== nb) return na - nb;
+        return a.name.localeCompare(b.name);
+      });
+      renderCategoryTiles();
+    }
+    if (!prodRes.error) { allProducts = prodRes.data || []; applyFilters(); }
   } catch (err) {
     console.error("refreshData failed:", err);
   }
@@ -185,8 +223,50 @@ function initPullToRefresh() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   COUPONS
+   FEATURE 1: STORE STATUS — fetch open/close from DB
+   Reads the `settings` table: { key: "store_open", value: "true"/"false" }
+   Falls back to open if the row doesn't exist yet.
 ══════════════════════════════════════════════════════════ */
+async function fetchStoreStatus() {
+  try {
+    const { data, error } = await db
+      .from("settings")
+      .select("value")
+      .eq("key", "store_open")
+      .single();
+    if (error) {
+      // Row may not exist on first run — treat as open
+      storeIsOpen = true;
+    } else {
+      storeIsOpen = data.value !== "false";
+    }
+  } catch (err) {
+    console.error("fetchStoreStatus failed:", err);
+    storeIsOpen = true; // fail-safe: keep open
+  }
+  applyStoreStatus();
+}
+
+/** Reflect the store open/close state in the UI */
+function applyStoreStatus() {
+  const banner    = document.getElementById("store-closed-banner");
+  const cartBtn   = document.getElementById("cart-open-btn");
+  const checkBtn  = document.getElementById("open-checkout-btn");
+
+  if (storeIsOpen) {
+    // Store is OPEN — show normal UI
+    if (banner)   banner.classList.remove("visible");
+    if (cartBtn)  { cartBtn.disabled = false; cartBtn.title = ""; }
+    if (checkBtn) { checkBtn.disabled = false; checkBtn.title = ""; }
+  } else {
+    // Store is CLOSED — show banner, disable cart/checkout
+    if (banner)   banner.classList.add("visible");
+    if (cartBtn)  { cartBtn.disabled = true;  cartBtn.title = "Store is closed"; }
+    if (checkBtn) { checkBtn.disabled = true; checkBtn.title = "Store is closed"; }
+  }
+}
+
+
 async function fetchCoupons() {
   try {
     const { data, error } = await db
@@ -305,6 +385,9 @@ function applyFilters() {
     list = list.filter(p => p.name.toLowerCase().includes(q));
   }
 
+  /* FEATURE 2: Client-side sort — no reload needed */
+  list = sortProducts(list, activeSortKey);
+
   const catName = activeCatId === "all"
     ? "All Products"
     : (allCategories.find(c => c.id === activeCatId)?.name || "Products");
@@ -331,6 +414,59 @@ function applyFilters() {
   }
 
   renderProductGrid(list);
+}
+
+/* ── FEATURE 2: Sort helper ──────────────────────────────
+   Returns a sorted copy of the products array based on key.
+   Discount = ((mrp - sellingPrice) / mrp) * 100
+──────────────────────────────────────────────────────── */
+function sortProducts(products, key) {
+  if (!key || key === "default") return products;
+
+  /** Get effective selling price for a product (cheapest variant or baseprice) */
+  function effectivePrice(p) {
+    const variants = parseVariants(p.variants);
+    if (variants.length) {
+      return Math.min(...variants.map(v => Number(v.price) || Infinity));
+    }
+    return Number(p.baseprice) || 0;
+  }
+
+  /** Get effective MRP (variant or product level) */
+  function effectiveMrp(p) {
+    const variants = parseVariants(p.variants);
+    if (variants.length) {
+      const cheapest = variants.reduce((a, b) => (Number(a.price)||0) <= (Number(b.price)||0) ? a : b);
+      const vMrp = cheapest.mrp && cheapest.mrp > cheapest.price ? cheapest.mrp : null;
+      return vMrp || (p.mrp && p.mrp > effectivePrice(p) ? p.mrp : null);
+    }
+    return (p.mrp && p.mrp > effectivePrice(p)) ? p.mrp : null;
+  }
+
+  /** Get discount percentage (0 if no MRP) */
+  function discountPct(p) {
+    const price = effectivePrice(p);
+    const mrp   = effectiveMrp(p);
+    return mrp ? Math.round(((mrp - price) / mrp) * 100) : 0;
+  }
+
+  const sorted = [...products];
+  switch (key) {
+    case "price-asc":
+      return sorted.sort((a, b) => effectivePrice(a) - effectivePrice(b));
+    case "price-desc":
+      return sorted.sort((a, b) => effectivePrice(b) - effectivePrice(a));
+    case "name-asc":
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    case "name-desc":
+      return sorted.sort((a, b) => b.name.localeCompare(a.name));
+    case "discount-asc":
+      return sorted.sort((a, b) => discountPct(a) - discountPct(b));
+    case "discount-desc":
+      return sorted.sort((a, b) => discountPct(b) - discountPct(a));
+    default:
+      return products;
+  }
 }
 
 /* ── Category Section Groups (BigBasket-style) ─────────── */
@@ -512,9 +648,15 @@ function renderProductGrid(products) {
 
   products.forEach(p => {
     try {
+      const isDynamic    = p.pricing_type === "dynamic";
       const variants     = parseVariants(p.variants);
       let sellingPrice, mrpPrice;
-      if (variants.length) {
+
+      if (isDynamic) {
+        // Dynamic: show price per KG and min qty hint
+        sellingPrice = Number(p.price_per_kg) || 0;
+        mrpPrice     = null;
+      } else if (variants.length) {
         // Find cheapest variant and use its MRP (falling back to product-level MRP)
         const cheapest = variants.reduce((a, b) => (Number(a.price)||0) <= (Number(b.price)||0) ? a : b);
         sellingPrice = Number(cheapest.price) || 0;
@@ -539,18 +681,27 @@ function renderProductGrid(products) {
         ? `<img class="product-card-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}" loading="lazy" decoding="async"/>`
         : `<div class="product-card-img-placeholder">📦</div>`;
 
+      const dynamicHint = isDynamic && p.min_qty
+        ? `<div class="card-dynamic-hint">⚖️ from ${p.min_qty >= 1000 ? (p.min_qty/1000)+"kg" : p.min_qty+"g"}</div>`
+        : "";
+
       card.innerHTML = `
         ${imgHtml}
         ${discountPercent > 0 && !isOOS ? `<div class="card-discount-ribbon">${discountPercent}% OFF</div>` : ""}
+        ${isDynamic && !isOOS ? `<div class="card-dynamic-ribbon">⚖️ Per KG</div>` : ""}
         ${isOOS ? `<div class="card-oos-ribbon">Out of Stock</div>` : ""}
         <div class="product-card-body">
           <div class="product-card-name">${escHtml(p.name)}</div>
           <div class="product-card-price-compact">
-            <span class="selling-price-sm">₹${sellingPrice.toLocaleString("en-IN")}</span>
+            ${isDynamic
+              ? `<span class="selling-price-sm">₹${sellingPrice.toLocaleString("en-IN")}<span class="per-kg-label">/kg</span></span>`
+              : `<span class="selling-price-sm">₹${sellingPrice.toLocaleString("en-IN")}</span>`
+            }
             ${mrpPrice ? `<span class="mrp-price-sm">₹${mrpPrice.toLocaleString("en-IN")}</span>` : ""}
             ${discountPercent > 0 ? `<span class="discount-badge-sm">${discountPercent}%&nbsp;off</span>` : ""}
           </div>
-          ${variants.length ? `<div class="card-variants-hint">${variants.length} options</div>` : ""}
+          ${dynamicHint}
+          ${!isDynamic && variants.length ? `<div class="card-variants-hint">${variants.length} options</div>` : ""}
           ${isOOS ? `<div class="card-oos-label">Out of Stock</div>` : ""}
         </div>
       `;
@@ -590,11 +741,12 @@ function openProductModal(product) {
 }
 
 function renderProductModal() {
-  const p        = modalProduct;
-  const variants = parseVariants(p.variants);
-  const price    = modalVariant ? modalVariant.price : (p.baseprice || 0);
+  const p          = modalProduct;
+  const isDynamic  = p.pricing_type === "dynamic";
+  const variants   = parseVariants(p.variants);
+  const price      = modalVariant ? modalVariant.price : (p.baseprice || 0);
   const variantMrp = modalVariant?.mrp && modalVariant.mrp > price ? modalVariant.mrp : null;
-  const mrpPrice = variantMrp || ((p.mrp && p.mrp > price) ? p.mrp : null);
+  const mrpPrice   = variantMrp || ((p.mrp && p.mrp > price) ? p.mrp : null);
   const discountPercent = mrpPrice
     ? Math.round(((mrpPrice - price) / mrpPrice) * 100)
     : 0;
@@ -604,8 +756,32 @@ function renderProductModal() {
     ? `<img class="modal-prod-img" src="${escHtml(p.imageurl)}" alt="${escHtml(p.name)}"/>`
     : `<div class="modal-prod-img-placeholder">📦</div>`;
 
+  // ── Dynamic quantity selector ──────────────────────────
+  let dynamicHtml = "";
+  if (isDynamic) {
+    const pricePerKg = Number(p.price_per_kg) || 0;
+    const minQty     = Number(p.min_qty)      || 100;
+    const stepSize   = Number(p.step_size)    || 50;
+    const fmtQty     = q => q >= 1000 ? `${(q/1000).toFixed(q%1000===0?0:1)} kg` : `${q} g`;
+    const initCalc   = (pricePerKg * minQty / 1000).toFixed(2);
+    dynamicHtml = `
+      <div class="dynamic-qty-section" id="dynamic-qty-section">
+        <div class="dynamic-qty-label">Choose quantity:</div>
+        <div class="dynamic-qty-controls">
+          <button class="dyn-qty-btn" id="dyn-minus" aria-label="Decrease">−</button>
+          <span class="dyn-qty-display" id="dyn-qty-display">${fmtQty(minQty)}</span>
+          <button class="dyn-qty-btn" id="dyn-plus" aria-label="Increase">+</button>
+        </div>
+        <div class="dynamic-price-calc" id="dyn-price-calc">
+          ₹${parseFloat(initCalc).toLocaleString("en-IN")} for ${fmtQty(minQty)}
+        </div>
+        <div class="dynamic-info-note">Min: ${fmtQty(minQty)} · Steps: ${fmtQty(stepSize)} · ₹${pricePerKg}/kg</div>
+      </div>
+    `;
+  }
+
   let variantsHtml = "";
-  if (variants.length) {
+  if (!isDynamic && variants.length) {
     const chips = variants.map((v, i) => {
       const isOos = v.out_of_stock === true;
       return `<button class="variant-chip ${i === 0 ? "active" : ""} ${isOos ? "variant-chip-oos" : ""}" data-idx="${i}" ${isOos ? "disabled" : ""}>${escHtml(v.name)} — ₹${v.price.toLocaleString("en-IN")}${isOos ? " <span class=\"variant-oos-tag\">Out of Stock</span>" : ""}</button>`;
@@ -617,23 +793,71 @@ function renderProductModal() {
     ? `<div class="modal-savings-badge">You save ₹${(mrpPrice - price).toLocaleString("en-IN")} (${discountPercent}% off)</div>`
     : "";
 
+  const priceBlockHtml = isDynamic
+    ? `<span class="selling-price-large">₹${Number(p.price_per_kg).toLocaleString("en-IN")}<span class="per-kg-label">/kg</span></span>`
+    : `<span class="selling-price-large">₹${price.toLocaleString("en-IN")}</span>
+       ${mrpPrice ? `<span class="mrp-price mrp-price-large">MRP ₹${mrpPrice.toLocaleString("en-IN")}</span>` : ""}
+       ${discountPercent > 0 ? `<span class="discount-badge discount-badge-lg">${discountPercent}% off</span>` : ""}`;
+
   document.getElementById("product-modal-content").innerHTML = `
     ${imgHtml}
     ${catName ? `<div class="modal-prod-category">${escHtml(catName)}</div>` : ""}
     <h2 class="modal-prod-name">${escHtml(p.name)}</h2>
     <p class="modal-prod-desc">${escHtml(p.description || "")}</p>
     <div class="modal-prod-price" id="modal-price-block">
-      <span class="selling-price-large">₹${price.toLocaleString("en-IN")}</span>
-      ${mrpPrice ? `<span class="mrp-price mrp-price-large">MRP ₹${mrpPrice.toLocaleString("en-IN")}</span>` : ""}
-      ${discountPercent > 0 ? `<span class="discount-badge discount-badge-lg">${discountPercent}% off</span>` : ""}
+      ${priceBlockHtml}
     </div>
-    ${savingsHtml}
+    ${!isDynamic ? savingsHtml : ""}
+    ${dynamicHtml}
     ${variantsHtml}
     <button class="add-cart-btn" id="modal-add-cart-btn">🛒 Add to Cart</button>
   `;
 
-  // Set initial add-to-cart button state based on first selected variant
   const addBtn = document.getElementById("modal-add-cart-btn");
+
+  // ── Wire dynamic qty buttons ──────────────────────────
+  if (isDynamic) {
+    const pricePerKg = Number(p.price_per_kg) || 0;
+    const minQty     = Number(p.min_qty)      || 100;
+    const stepSize   = Number(p.step_size)    || 50;
+    let currentQty   = minQty;
+
+    const fmtQty = q => q >= 1000 ? `${(q/1000).toFixed(q%1000===0?0:1)} kg` : `${q} g`;
+    const updateDisplay = () => {
+      const el   = document.getElementById("dyn-qty-display");
+      const calc = document.getElementById("dyn-price-calc");
+      const cost = (pricePerKg * currentQty / 1000);
+      if (el)   el.textContent   = fmtQty(currentQty);
+      if (calc) calc.textContent = `₹${cost.toLocaleString("en-IN", {maximumFractionDigits:2})} for ${fmtQty(currentQty)}`;
+    };
+    document.getElementById("dyn-minus")?.addEventListener("click", () => {
+      if (currentQty > minQty) { currentQty -= stepSize; updateDisplay(); }
+    });
+    document.getElementById("dyn-plus")?.addEventListener("click", () => {
+      currentQty += stepSize; updateDisplay();
+    });
+
+    // Override add-to-cart for dynamic
+    addBtn.addEventListener("click", () => {
+      const finalPrice = parseFloat((pricePerKg * currentQty / 1000).toFixed(2));
+      const qtyLabel   = fmtQty(currentQty);
+      cartAdd({
+        productId:   p.id,
+        name:        p.name,
+        imageUrl:    p.imageurl || null,
+        price:       finalPrice,
+        mrp:         null,
+        variantName: qtyLabel,
+        isDynamic:   true,
+        qty_grams:   currentQty,
+      });
+      closeProductModal();
+      showToast(`✅ "${p.name}" (${qtyLabel}) added to cart!`);
+    });
+    return; // early return — fixed pricing listeners not needed
+  }
+
+  // ── Fixed: initial add-to-cart button state ───────────
   if (variants.length && modalVariant?.out_of_stock) {
     addBtn.disabled = true;
     addBtn.textContent = "🚫 Out of Stock";
@@ -768,6 +992,11 @@ function renderCartItems() {
    from telegram.js instead of sendOrderEmail() from email.js
 ══════════════════════════════════════════════════════════ */
 function openCheckout() {
+  /* FEATURE 1: Backend enforcement — block checkout when store is closed */
+  if (!storeIsOpen) {
+    showToast("🔒 Store is currently closed. Please come back later.");
+    return;
+  }
   if (!cart.length) { showToast("⚠️ Cart is empty!"); return; }
   closeCart();
 
@@ -1202,6 +1431,15 @@ function wireEvents() {
       closeMyOrders();
     }
   });
+
+  /* FEATURE 2: Sort dropdown — change fires applyFilters which reads activeSortKey */
+  const sortSelect = document.getElementById("sort-select");
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      activeSortKey = sortSelect.value;
+      applyFilters(); // re-render current list with new sort, no reload
+    });
+  }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1214,6 +1452,8 @@ function wireEvents() {
   initSearch();
   initPullToRefresh();
   subscribeToOrderDeletions(); // realtime sync for delivered orders
+  /* FEATURE 1: Load store open/close status from DB before showing UI */
+  await fetchStoreStatus();
   await fetchCategories();
   await fetchProducts();
   await fetchCoupons();

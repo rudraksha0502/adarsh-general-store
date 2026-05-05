@@ -25,6 +25,74 @@ let variantCount   = 0;
 let deleteCallback = null;
 let currentCatMode = "header"; // "header" | "sub"
 
+/* FEATURE 1: Store open/close state tracked in admin */
+let adminStoreIsOpen = true;
+
+/* ═══════════════════════════════════════════════════════════
+   FEATURE 1: STORE OPEN / CLOSE
+   ─────────────────────────────────────────────────────────
+   DB table `settings` with row: { key: "store_open", value: "true"/"false" }
+   Admin can toggle this from the nav button.
+═══════════════════════════════════════════════════════════ */
+
+/** Fetch current store status from Supabase settings table */
+async function fetchStoreStatus() {
+  try {
+    const { data, error } = await db
+      .from("settings")
+      .select("value")
+      .eq("key", "store_open")
+      .single();
+    adminStoreIsOpen = error ? true : data.value !== "false";
+  } catch {
+    adminStoreIsOpen = true;
+  }
+  renderStoreToggleBtn();
+}
+
+/** Update the store status in DB and reflect in UI */
+async function toggleStoreStatus() {
+  const btn = document.getElementById("store-toggle-btn");
+  if (btn) btn.disabled = true;
+
+  const newState = !adminStoreIsOpen;
+  try {
+    // Upsert: insert if doesn't exist, update if it does
+    const { error } = await db
+      .from("settings")
+      .upsert({ key: "store_open", value: String(newState) }, { onConflict: "key" });
+
+    if (error) throw new Error(error.message);
+    adminStoreIsOpen = newState;
+    showToast(newState ? "✅ Store is now OPEN" : "🔒 Store is now CLOSED");
+  } catch (err) {
+    showToast(`❌ Could not update store status: ${err.message}`);
+  } finally {
+    if (btn) btn.disabled = false;
+    renderStoreToggleBtn();
+  }
+}
+
+/** Reflect store open/close state on the toggle button */
+function renderStoreToggleBtn() {
+  const btn   = document.getElementById("store-toggle-btn");
+  const icon  = document.getElementById("store-toggle-icon");
+  const label = document.getElementById("store-toggle-label");
+  if (!btn) return;
+
+  if (adminStoreIsOpen) {
+    btn.className = "store-toggle-btn store-open";
+    if (icon)  icon.textContent  = "🟢";
+    if (label) label.textContent = "Store: Open";
+    btn.title = "Click to close the store";
+  } else {
+    btn.className = "store-toggle-btn store-closed";
+    if (icon)  icon.textContent  = "🔴";
+    if (label) label.textContent = "Store: Closed";
+    btn.title = "Click to open the store";
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════
    LOGIN
 ═══════════════════════════════════════════════════════════ */
@@ -62,6 +130,8 @@ function switchTab(tab) {
   document.getElementById("tab-categories").style.display  = tab === "categories"  ? "grid" : "none";
   document.getElementById("tab-orders").style.display      = tab === "orders"      ? "grid" : "none";
   document.getElementById("tab-coupons").style.display     = tab === "coupons"     ? "grid" : "none";
+  const analyticsEl = document.getElementById("tab-analytics");
+  if (analyticsEl) analyticsEl.style.display = tab === "analytics" ? "grid" : "none";
 
   // Clear badge when admin opens orders tab
   if (tab === "orders") {
@@ -69,8 +139,9 @@ function switchTab(tab) {
     if (badge) badge.style.display = "none";
     fetchOrders();
   }
-  if (tab === "coupons") fetchCouponsAdmin();
-  if (tab === "products") renderFilteredProducts();
+  if (tab === "coupons")   fetchCouponsAdmin();
+  if (tab === "products")  renderFilteredProducts();
+  if (tab === "analytics") loadAnalytics();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -149,7 +220,17 @@ async function fetchCategories() {
       `<p style="color:var(--crimson)">Failed to load: ${escHtml(error.message)}</p>`;
     return;
   }
-  allCategories = data || [];
+
+  // FEATURE 3: Sort categories by numeric prefix (e.g. "1. Fruits" before "2. Dairy")
+  // then alphabetically as fallback — guarantees consistent order in admin list AND
+  // the storefront dropdown.
+  allCategories = (data || []).sort((a, b) => {
+    const na = _numericPrefixAdmin(a.name);
+    const nb = _numericPrefixAdmin(b.name);
+    if (na !== nb) return na - nb;
+    return a.name.localeCompare(b.name);
+  });
+
   allHeaders    = allCategories.filter(c => !c.parent_id);
   allSubs       = allCategories.filter(c =>  c.parent_id);
 
@@ -157,6 +238,12 @@ async function fetchCategories() {
   renderCategoryList();
   populateCategoryDropdown();
   populateParentDropdown();
+}
+
+/** Extract leading numeric prefix for sort — "3. Dairy" → 3, "Beverages" → Infinity */
+function _numericPrefixAdmin(name) {
+  const m = (name || "").match(/^(\d+)/);
+  return m ? parseInt(m[1], 10) : Infinity;
 }
 
 function catIconHtml(cat, size = "admin") {
@@ -697,8 +784,7 @@ async function toggleOutOfStock(productId, isOOS) {
 async function saveProduct() {
   const name        = document.getElementById("prod-name").value.trim();
   const desc        = document.getElementById("prod-desc").value.trim();
-  const basePrice   = parseFloat(document.getElementById("prod-price").value);
-  const mrpVal      = parseFloat(document.getElementById("prod-mrp").value);
+  const pricingType = document.getElementById("prod-pricing-type").value || "fixed";
   const catId       = document.getElementById("prod-category").value || null;
   const imageFile   = document.getElementById("prod-image").files[0];
   const existUrl    = document.getElementById("existing-image-url").value;
@@ -706,13 +792,41 @@ async function saveProduct() {
   const variants    = getVariantsFromForm();
 
   if (!name) { setStatus("product-form-status", "⚠️ Product name is required.", "err"); return; }
-  if (isNaN(basePrice) || basePrice < 0) { setStatus("product-form-status", "⚠️ Enter a valid selling price.", "err"); return; }
-  if (!isNaN(mrpVal) && mrpVal > 0 && mrpVal < basePrice) {
-    setStatus("product-form-status", "⚠️ MRP should be ≥ selling price.", "err"); return;
-  }
-  const invalidVariant = variants.find(v => v.mrp !== null && v.mrp < v.price);
-  if (invalidVariant) {
-    setStatus("product-form-status", `⚠️ Variant "${invalidVariant.name}": MRP should be ≥ selling price.`, "err"); return;
+
+  let basePrice = 0, mrpVal = null;
+  let pricePerKg = null, minQty = null, stepSize = null;
+
+  if (pricingType === "dynamic") {
+    // ── Dynamic pricing validation ──────────────────────
+    pricePerKg = parseFloat(document.getElementById("prod-price-per-kg").value);
+    minQty     = parseInt(document.getElementById("prod-min-qty").value);
+    stepSize   = parseInt(document.getElementById("prod-step-size").value);
+    if (isNaN(pricePerKg) || pricePerKg <= 0) {
+      setStatus("product-form-status", "⚠️ Price per KG is required and must be > 0.", "err"); return;
+    }
+    if (isNaN(minQty) || minQty <= 0) {
+      setStatus("product-form-status", "⚠️ Minimum Quantity is required and must be > 0.", "err"); return;
+    }
+    if (isNaN(stepSize) || stepSize <= 0) {
+      setStatus("product-form-status", "⚠️ Step Size is required and must be > 0.", "err"); return;
+    }
+    if (minQty % stepSize !== 0) {
+      setStatus("product-form-status", "⚠️ Minimum Quantity must be divisible by Step Size.", "err"); return;
+    }
+    // Store price_per_kg as baseprice for DB compatibility; dynamic fields go in variants field
+    basePrice = pricePerKg;
+  } else {
+    // ── Fixed pricing validation ──────────────────────
+    basePrice = parseFloat(document.getElementById("prod-price").value);
+    mrpVal    = parseFloat(document.getElementById("prod-mrp").value);
+    if (isNaN(basePrice) || basePrice < 0) { setStatus("product-form-status", "⚠️ Enter a valid selling price.", "err"); return; }
+    if (!isNaN(mrpVal) && mrpVal > 0 && mrpVal < basePrice) {
+      setStatus("product-form-status", "⚠️ MRP should be ≥ selling price.", "err"); return;
+    }
+    const invalidVariant = variants.find(v => v.mrp !== null && v.mrp < v.price);
+    if (invalidVariant) {
+      setStatus("product-form-status", `⚠️ Variant "${invalidVariant.name}": MRP should be ≥ selling price.`, "err"); return;
+    }
   }
 
   const btn = document.getElementById("save-product-btn");
@@ -736,12 +850,16 @@ async function saveProduct() {
 
     const row = {
       name,
-      description: desc,
-      baseprice:   basePrice,
-      mrp:         (!isNaN(mrpVal) && mrpVal > 0) ? mrpVal : null,
+      description:  desc,
+      pricing_type: pricingType,
+      baseprice:    basePrice,
+      mrp:          (!isNaN(mrpVal) && mrpVal > 0) ? mrpVal : null,
+      price_per_kg: pricingType === "dynamic" ? pricePerKg : null,
+      min_qty:      pricingType === "dynamic" ? minQty     : null,
+      step_size:    pricingType === "dynamic" ? stepSize   : null,
       imageurl,
-      category_id: catId,
-      variants:    variants.length ? variants : [],
+      category_id:  catId,
+      variants:     (pricingType === "fixed" && variants.length) ? variants : [],
     };
 
     let dbError;
@@ -775,16 +893,32 @@ function startEditProduct(productId) {
   const p = allProducts.find(x => x.id === productId);
   if (!p) return;
 
+  const pricingType = p.pricing_type || "fixed";
+
   document.getElementById("product-form-title").textContent  = "✏️ Edit Product";
   document.getElementById("edit-product-id").value           = productId;
   document.getElementById("prod-name").value                 = p.name || "";
   document.getElementById("prod-desc").value                 = p.description || "";
-  document.getElementById("prod-price").value                = p.baseprice || "";
-  document.getElementById("prod-mrp").value                  = p.mrp || "";
   document.getElementById("prod-category").value             = p.category_id || "";
   document.getElementById("existing-image-url").value        = p.imageurl || "";
   document.getElementById("save-product-btn").textContent    = "💾 Update Product";
   document.getElementById("cancel-edit-btn").style.display   = "inline-flex";
+
+  // Restore pricing type UI
+  setPricingType(pricingType);
+
+  if (pricingType === "dynamic") {
+    const ppkg = document.getElementById("prod-price-per-kg");
+    const minq = document.getElementById("prod-min-qty");
+    const step = document.getElementById("prod-step-size");
+    if (ppkg) ppkg.value = p.price_per_kg || "";
+    if (minq) minq.value = p.min_qty      || "";
+    if (step) step.value = p.step_size    || "";
+  } else {
+    document.getElementById("prod-price").value = p.baseprice || "";
+    document.getElementById("prod-mrp").value   = p.mrp       || "";
+    updateDiscountPreview();
+  }
 
   const preview = document.getElementById("img-preview");
   if (p.imageurl) {
@@ -796,7 +930,9 @@ function startEditProduct(productId) {
 
   document.getElementById("variants-list").innerHTML = "";
   variantCount = 0;
-  parseVariants(p.variants).forEach(v => addVariantRow(v.name, v.price, v.mrp || "", v.out_of_stock || false));
+  if (pricingType === "fixed") {
+    parseVariants(p.variants).forEach(v => addVariantRow(v.name, v.price, v.mrp || "", v.out_of_stock || false));
+  }
 
   setStatus("product-form-status", "", "");
   document.querySelector('#tab-add-product .admin-card').scrollIntoView({ behavior: "smooth", block: "start" });
@@ -823,8 +959,58 @@ async function deleteProduct(productId, productName) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   FORM RESET — Product
+   FEATURE 5: FIXED vs DYNAMIC PRICING
+   ─────────────────────────────────────────────────────────
+   Toggles UI between fixed price fields and dynamic
+   per-KG fields. Only one system active at a time.
 ═══════════════════════════════════════════════════════════ */
+function setPricingType(type) {
+  document.getElementById("prod-pricing-type").value = type;
+
+  const fixedSection   = document.getElementById("fixed-pricing-section");
+  const dynamicSection = document.getElementById("dynamic-pricing-section");
+  const fixedBtn       = document.getElementById("pricing-btn-fixed");
+  const dynamicBtn     = document.getElementById("pricing-btn-dynamic");
+
+  if (type === "fixed") {
+    fixedSection.style.display   = "block";
+    dynamicSection.style.display = "none";
+    fixedBtn.classList.add("active");
+    dynamicBtn.classList.remove("active");
+    // Re-enable fixed fields
+    document.getElementById("prod-price").disabled = false;
+    document.getElementById("prod-mrp").disabled   = false;
+  } else {
+    fixedSection.style.display   = "none";
+    dynamicSection.style.display = "block";
+    fixedBtn.classList.remove("active");
+    dynamicBtn.classList.add("active");
+    // Clear fixed fields when switching to dynamic
+    document.getElementById("prod-price").value = "";
+    document.getElementById("prod-mrp").value   = "";
+    document.getElementById("discount-preview").style.display = "none";
+  }
+}
+
+/** Show live discount % preview when both MRP and selling price are filled */
+function updateDiscountPreview() {
+  const mrp   = parseFloat(document.getElementById("prod-mrp").value);
+  const price = parseFloat(document.getElementById("prod-price").value);
+  const el    = document.getElementById("discount-preview");
+  if (!el) return;
+
+  if (!isNaN(mrp) && !isNaN(price) && mrp > 0 && price > 0 && mrp >= price) {
+    const pct = Math.round(((mrp - price) / mrp) * 100);
+    if (pct > 0) {
+      el.textContent = `🏷️ ${pct}% discount — customer saves ₹${(mrp - price).toLocaleString("en-IN")}`;
+      el.style.display = "block";
+      return;
+    }
+  }
+  el.style.display = "none";
+}
+
+
 function resetProductForm() {
   document.getElementById("product-form-title").textContent  = "➕ Add Product";
   document.getElementById("edit-product-id").value           = "";
@@ -842,6 +1028,16 @@ function resetProductForm() {
   document.getElementById("save-product-btn").textContent    = "💾 Save Product";
   document.getElementById("upload-bar-wrap").style.display   = "none";
   document.getElementById("upload-bar").style.width          = "0";
+  // Reset dynamic pricing fields
+  const ppkg = document.getElementById("prod-price-per-kg");
+  const minq = document.getElementById("prod-min-qty");
+  const step = document.getElementById("prod-step-size");
+  if (ppkg) ppkg.value = "";
+  if (minq) minq.value = "";
+  if (step) step.value = "";
+  const dp = document.getElementById("discount-preview");
+  if (dp) dp.style.display = "none";
+  setPricingType("fixed");
   variantCount = 0;
   setStatus("product-form-status", "", "");
 }
@@ -1196,7 +1392,78 @@ function escAdminHtml(str) {
 /* ═══════════════════════════════════════════════════════════
    INIT & EVENT WIRING
 ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   FEATURE 6: ADMIN ANALYTICS
+   ─────────────────────────────────────────────────────────
+   Pulls live stats from already-loaded in-memory arrays
+   + quick DB count queries. Lightweight — no extra tables.
+═══════════════════════════════════════════════════════════ */
+async function loadAnalytics() {
+  const loadEl = document.getElementById("analytics-loading");
+  if (loadEl) loadEl.style.display = "flex";
+
+  try {
+    // Use already-loaded data where possible
+    const totalProducts = allProducts.length;
+    const oosCount      = allProducts.filter(p => p.out_of_stock).length;
+    const dynamicCount  = allProducts.filter(p => p.pricing_type === "dynamic").length;
+    const totalCats     = allCategories.length;
+    const pendingOrders = allOrders.length;
+
+    // Fetch active coupons count
+    const { count: activeCoupons } = await db
+      .from("coupons").select("id", { count: "exact", head: true })
+      .eq("is_active", true);
+
+    // Set stats
+    _setStat("stat-products-val",  totalProducts);
+    _setStat("stat-oos-val",       oosCount);
+    _setStat("stat-cats-val",      totalCats);
+    _setStat("stat-orders-val",    pendingOrders);
+    _setStat("stat-dynamic-val",   dynamicCount);
+    _setStat("stat-coupons-val",   activeCoupons || 0);
+
+    // Revenue from pending orders
+    const revenue = allOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+    const revenueEl = document.getElementById("revenue-breakdown");
+    if (revenueEl) {
+      revenueEl.innerHTML = allOrders.length
+        ? `<strong>₹${revenue.toLocaleString("en-IN")}</strong> across ${allOrders.length} pending order${allOrders.length !== 1 ? "s" : ""}`
+        : `<span style="color:#aaa">No pending orders</span>`;
+    }
+
+    // Inventory warnings — OOS products list
+    const warnEl = document.getElementById("inventory-warnings");
+    if (warnEl) {
+      const oosList = allProducts.filter(p => p.out_of_stock);
+      if (!oosList.length) {
+        warnEl.innerHTML = `<span style="color:var(--teal)">✅ All products are in stock!</span>`;
+      } else {
+        warnEl.innerHTML = oosList.map(p =>
+          `<div style="padding:.3rem 0;border-bottom:1px solid #f0f0f0">
+            🚫 <strong>${escHtml(p.name)}</strong>
+            <button class="btn btn-ghost btn-sm" style="margin-left:.5rem;font-size:.72rem"
+              onclick="toggleOutOfStock('${p.id}', false); loadAnalytics();">Mark In Stock</button>
+          </div>`
+        ).join("");
+      }
+    }
+  } catch (err) {
+    console.error("Analytics error:", err);
+  } finally {
+    if (loadEl) loadEl.style.display = "none";
+  }
+}
+
+function _setStat(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
 async function init() {
+  /* FEATURE 1: Load store status so toggle button shows correct state */
+  await fetchStoreStatus();
   await fetchCategories();
   await fetchProducts();
   await fetchOrders();
@@ -1211,6 +1478,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") doLogin();
   });
   document.getElementById("logout-btn").addEventListener("click", doLogout);
+
+  /* FEATURE 1: Store open/close toggle button */
+  const storeToggleBtn = document.getElementById("store-toggle-btn");
+  if (storeToggleBtn) {
+    storeToggleBtn.addEventListener("click", toggleStoreStatus);
+  }
 
   /* ── Hamburger ─────────────────────────────────────── */
   document.getElementById("hamburger-btn").addEventListener("click", toggleHamburger);
@@ -1247,6 +1520,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  /* ── Discount preview — live update as admin types MRP/price ── */
+  const prodMrpEl   = document.getElementById("prod-mrp");
+  const prodPriceEl = document.getElementById("prod-price");
+  if (prodMrpEl)   prodMrpEl.addEventListener("input",   updateDiscountPreview);
+  if (prodPriceEl) prodPriceEl.addEventListener("input",  updateDiscountPreview);
 
   /* ── Category forms ─────────────────────────────────── */
   // Header form

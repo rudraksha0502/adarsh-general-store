@@ -35,13 +35,25 @@
 /* ── Reset ─────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
+/* ═══════════════════════════════════════════════════════════
+   FEATURE 4 FIX: Footer always at bottom — flex column layout
+   body grows to fill viewport so footer never floats mid-page
+═══════════════════════════════════════════════════════════ */
+html { height: 100%; }
 body {
   font-family: 'Nunito', sans-serif;
   background: var(--cream);
   color: var(--dark);
   line-height: 1.65;
   overflow-x: hidden;
+  /* Flex column so footer is always pushed to the very bottom */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
+/* Hero + Products section grow to fill remaining space */
+.hero, .products-section { flex: 0 0 auto; }
+.products-section { flex: 1 0 auto; }
 img { display: block; max-width: 100%; }
 a   { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: inherit; }
@@ -928,7 +940,10 @@ input, textarea, select { font-family: inherit; }
 .footer {
   background: var(--teal-dk); color: rgba(255,255,255,.55);
   text-align: center; padding: 1.4rem;
-  font-size: .83rem; margin-top: 4rem;
+  font-size: .83rem;
+  /* FEATURE 4: flex-shrink:0 ensures footer never collapses; margin-top:auto pushes it down */
+  flex-shrink: 0;
+  margin-top: auto;
 }
 .footer strong { color: var(--saffron); }
 
@@ -1934,4 +1949,238 @@ body.admin-body { background: #F0EDE8; }
   padding: .12rem .45rem;
   border-radius: 4px;
   margin-left: .1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FEATURE 1: Store Open/Close Toggle Button (Admin Nav)
+═══════════════════════════════════════════════════════════ */
+.store-toggle-btn {
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .38rem .85rem; border-radius: 20px;
+  font-size: .83rem; font-weight: 700; letter-spacing: .02em;
+  border: 2px solid transparent;
+  transition: background .25s, color .25s, border-color .25s;
+  cursor: pointer;
+}
+.store-toggle-btn.store-open {
+  background: #d4edda; color: #155724; border-color: #28a745;
+}
+.store-toggle-btn.store-closed {
+  background: #f8d7da; color: #721c24; border-color: #dc3545;
+}
+.store-toggle-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ─── Storefront Closed Banner ─────────────────────────── */
+#store-closed-banner {
+  display: none;
+  background: #fff3cd; border: 2px solid #ffc107;
+  color: #856404; text-align: center;
+  padding: .85rem 1.2rem; font-size: .97rem; font-weight: 600;
+  position: sticky; top: 60px; z-index: 800;
+}
+#store-closed-banner.visible { display: block; }
+
+/* ═══════════════════════════════════════════════════════════
+   FEATURE 2: Product Sort Bar
+═══════════════════════════════════════════════════════════ */
+.sort-bar {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .55rem 1.2rem .3rem;
+  flex-wrap: wrap;
+}
+.sort-bar label {
+  font-size: .82rem; font-weight: 700;
+  color: var(--dark); white-space: nowrap;
+}
+.sort-select {
+  font-size: .83rem; padding: .32rem .65rem;
+  border: 1.5px solid var(--teal); border-radius: 8px;
+  background: #fff; color: var(--dark);
+  cursor: pointer; outline: none;
+  transition: border-color .2s;
+}
+.sort-select:focus { border-color: var(--saffron); }
+
+/* ═══════════════════════════════════════════════════════════
+   FEATURE 5: FIXED vs DYNAMIC PRICING
+═══════════════════════════════════════════════════════════ */
+
+/* ── Admin: Pricing type toggle buttons ── */
+.pricing-type-toggle {
+  display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .4rem;
+}
+.pricing-type-btn {
+  flex: 1; min-width: 130px; padding: .55rem .9rem;
+  border: 2px solid var(--border, #e8e8e8);
+  border-radius: 10px; background: #f8f8f8;
+  font-size: .87rem; font-weight: 600; cursor: pointer;
+  color: var(--dark); transition: all .18s;
+}
+.pricing-type-btn.active {
+  border-color: var(--saffron, #f4a40e);
+  background: #fff8ec; color: var(--saffron, #f4a40e);
+}
+.pricing-type-btn:hover:not(.active) {
+  border-color: var(--teal, #00897b);
+  background: #f0faf8;
+}
+
+/* ── Admin: Dynamic pricing info box ── */
+.dynamic-pricing-info {
+  background: #e8f5f3; border: 1.5px solid var(--teal, #00897b);
+  border-radius: 10px; padding: .7rem 1rem;
+  font-size: .83rem; color: #005048; margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+/* ── Storefront: Per-KG label in price ── */
+.per-kg-label {
+  font-size: .65em; font-weight: 600;
+  color: var(--teal, #00897b); margin-left: 1px;
+}
+
+/* ── Storefront: Dynamic ribbon on card ── */
+.card-dynamic-ribbon {
+  position: absolute; top: 8px; left: 8px;
+  background: var(--teal, #00897b); color: #fff;
+  font-size: .68rem; font-weight: 700; padding: .18rem .45rem;
+  border-radius: 6px; z-index: 2; letter-spacing: .02em;
+}
+
+/* ── Storefront: Dynamic hint below price ── */
+.card-dynamic-hint {
+  font-size: .72rem; color: var(--teal, #00897b);
+  font-weight: 600; margin-top: .15rem;
+}
+
+/* ── Storefront Modal: Dynamic qty selector ── */
+.dynamic-qty-section {
+  background: #f0faf9; border: 1.5px solid var(--teal, #00897b);
+  border-radius: 12px; padding: 1rem 1.1rem; margin: .8rem 0;
+}
+.dynamic-qty-label {
+  font-size: .85rem; font-weight: 700; color: var(--dark);
+  margin-bottom: .6rem;
+}
+.dynamic-qty-controls {
+  display: flex; align-items: center; gap: .8rem; margin-bottom: .55rem;
+}
+.dyn-qty-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 2px solid var(--teal, #00897b);
+  background: #fff; color: var(--teal, #00897b);
+  font-size: 1.3rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; line-height: 1;
+}
+.dyn-qty-btn:hover {
+  background: var(--teal, #00897b); color: #fff;
+}
+.dyn-qty-display {
+  font-size: 1.1rem; font-weight: 700; color: var(--dark);
+  min-width: 80px; text-align: center;
+}
+.dynamic-price-calc {
+  font-size: 1rem; font-weight: 700; color: var(--saffron, #f4a40e);
+  margin-bottom: .3rem;
+}
+.dynamic-info-note {
+  font-size: .73rem; color: #888; margin-top: .25rem;
+}
+
+/* ── Admin: Live discount preview ── */
+#discount-preview {
+  background: #fff8ec; border-radius: 7px;
+  padding: .3rem .65rem; display: inline-block;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FEATURE 6: AI-DRIVEN IMPROVEMENTS
+═══════════════════════════════════════════════════════════ */
+
+/* ── Loading Skeletons ── */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%; border-radius: 8px;
+  animation: skeleton-shimmer 1.4s infinite;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-card {
+  height: 240px; border-radius: 14px;
+}
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: .85rem; padding: .5rem 1rem;
+}
+
+/* ── Toast ── */
+.toast-msg {
+  position: fixed; bottom: 90px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(20,20,20,.93); color: #fff;
+  padding: .6rem 1.3rem; border-radius: 22px;
+  font-size: .88rem; font-weight: 500; z-index: 9999;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  white-space: nowrap; max-width: 88vw; text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+}
+.toast-msg.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Empty states ── */
+.state-box {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 3rem 1rem; text-align: center;
+  color: #aaa; gap: .5rem;
+}
+.state-icon { font-size: 2.5rem; line-height: 1; }
+.state-box p { margin: 0; font-size: .92rem; }
+
+/* ── Error UI ── */
+.error-box {
+  background: #fff0f0; border: 1.5px solid #f7c5c5;
+  border-radius: 12px; padding: 1.2rem 1.4rem;
+  text-align: center; color: #c0392b;
+  font-size: .88rem; margin: 1rem;
+}
+.error-box button {
+  margin-top: .7rem; padding: .4rem 1rem;
+  background: #c0392b; color: #fff;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-size: .83rem;
+}
+
+/* ── Mobile responsiveness improvements ── */
+@media (max-width: 480px) {
+  .dynamic-qty-controls { gap: .5rem; }
+  .dyn-qty-btn { width: 34px; height: 34px; font-size: 1.1rem; }
+  .dyn-qty-display { font-size: .95rem; min-width: 65px; }
+  .pricing-type-btn { font-size: .82rem; padding: .45rem .6rem; }
+}
+
+
+/* ── Admin Analytics ── */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .85rem; margin-top: .7rem;
+}
+.analytics-card {
+  background: #f8f9fa; border: 1.5px solid #e8e8e8;
+  border-radius: 12px; padding: 1rem .8rem;
+  text-align: center; transition: box-shadow .2s;
+}
+.analytics-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+.analytics-icon { font-size: 1.6rem; margin-bottom: .3rem; }
+.analytics-value {
+  font-size: 1.7rem; font-weight: 800;
+  color: var(--saffron, #f4a40e); line-height: 1.1;
+}
+.analytics-label {
+  font-size: .73rem; color: #888; margin-top: .2rem; font-weight: 600;
 }
