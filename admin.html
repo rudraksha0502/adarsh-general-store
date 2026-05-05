@@ -396,6 +396,71 @@
     </div>
   </div>
 
+
+  <!-- ── ANALYTICS TAB ────────────────────────────────── -->
+  <div id="tab-analytics" class="admin-wrap admin-single-col" style="display:none">
+
+    <!-- Loading spinner -->
+    <div id="analytics-loading" class="spinner-wrap" style="display:none">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="admin-card">
+      <div class="admin-card-title">📊 Store Overview</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-top:.5rem">
+
+        <div style="background:var(--bg,#f9f9f9);border:1px solid #eee;border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.8rem;font-weight:700;color:var(--primary,#2f9e8f)" id="stat-products-val">—</div>
+          <div style="font-size:.8rem;color:#888;margin-top:.25rem">Total Products</div>
+        </div>
+
+        <div style="background:var(--bg,#f9f9f9);border:1px solid #eee;border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.8rem;font-weight:700;color:#e74c3c" id="stat-oos-val">—</div>
+          <div style="font-size:.8rem;color:#888;margin-top:.25rem">Out of Stock</div>
+        </div>
+
+        <div style="background:var(--bg,#f9f9f9);border:1px solid #eee;border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.8rem;font-weight:700;color:#8e44ad" id="stat-cats-val">—</div>
+          <div style="font-size:.8rem;color:#888;margin-top:.25rem">Categories</div>
+        </div>
+
+        <div style="background:var(--bg,#f9f9f9);border:1px solid #eee;border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.8rem;font-weight:700;color:#e67e22" id="stat-orders-val">—</div>
+          <div style="font-size:.8rem;color:#888;margin-top:.25rem">Pending Orders</div>
+        </div>
+
+        <div style="background:var(--bg,#f9f9f9);border:1px solid #eee;border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.8rem;font-weight:700;color:#2980b9" id="stat-dynamic-val">—</div>
+          <div style="font-size:.8rem;color:#888;margin-top:.25rem">Dynamic Priced</div>
+        </div>
+
+        <div style="background:var(--bg,#f9f9f9);border:1px solid #eee;border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.8rem;font-weight:700;color:#27ae60" id="stat-coupons-val">—</div>
+          <div style="font-size:.8rem;color:#888;margin-top:.25rem">Active Coupons</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Revenue Breakdown -->
+    <div class="admin-card" style="margin-top:1rem">
+      <div class="admin-card-title">💰 Revenue (Pending Orders)</div>
+      <div id="revenue-breakdown" style="margin-top:.5rem;color:#555;font-size:.95rem">
+        <span style="color:#aaa">Loading…</span>
+      </div>
+    </div>
+
+    <!-- Inventory Warnings -->
+    <div class="admin-card" style="margin-top:1rem">
+      <div class="admin-card-title">🚫 Inventory Warnings</div>
+      <div id="inventory-warnings" style="margin-top:.5rem;font-size:.9rem">
+        <span style="color:#aaa">Loading…</span>
+      </div>
+    </div>
+
+  </div><!-- end #tab-analytics -->
+
 </div><!-- end #admin-panel -->
 
 <!-- ════════════════════════════════════════════════════
